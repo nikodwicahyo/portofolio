@@ -46,6 +46,7 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
               {id ? (
                 <Link
                   to={`/project/${toSlug(Title)}`}
+                  onClick={() => sessionStorage.setItem('scrollToPortfolio', 'true')}
                   className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 transition-all duration-200 hover:scale-105 active:scale-95 text-xs sm:text-sm"
                 >
                   <span className="font-medium">Details</span>

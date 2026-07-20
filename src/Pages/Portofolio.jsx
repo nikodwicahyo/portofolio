@@ -344,8 +344,11 @@ export default function FullWidthTabs() {
   }, []);
 
   useEffect(() => {
-    const el = document.getElementById('Portofolio');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (sessionStorage.getItem('scrollToPortfolio')) {
+      sessionStorage.removeItem('scrollToPortfolio');
+      const el = document.getElementById('Portofolio');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, []);
 
   const handleChange = (event, newValue) => {
