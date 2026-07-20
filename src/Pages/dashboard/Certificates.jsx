@@ -125,12 +125,23 @@ export default function Certificates() {
   }, [certs, currentPage])
 
   const fetchCerts = useCallback(async () => {
+    const raw = localStorage.getItem("dashboard_certificates")
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        if (parsed.data?.length > 0 && Date.now() - (parsed.ts || 0) < 86400000) {
+          setCerts(parsed.data)
+          return
+        }
+      } catch {}
+    }
     setLoading(true)
     const { data } = await supabase.from('certificates').select('id,img,created_at').order('created_at', { ascending: false })
-    setCerts(data || [])
+    const rows = data || []
+    setCerts(rows)
     setLoading(false)
     try {
-      localStorage.setItem("dashboard_certificates", JSON.stringify(data || []))
+      localStorage.setItem("dashboard_certificates", JSON.stringify({ data: rows, ts: Date.now() }))
     } catch { /* storage full */ }
   }, [])
 
@@ -138,7 +149,8 @@ export default function Certificates() {
     const cached = localStorage.getItem("dashboard_certificates")
     if (cached) {
       try {
-        setCerts(JSON.parse(cached))
+        const parsed = JSON.parse(cached)
+        setCerts(parsed.data || parsed)
         setLoading(false)
       } catch { /* invalid cache */ }
     }

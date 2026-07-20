@@ -255,7 +255,7 @@ const TAB_META = [
 ];
 
 const EMPTY = [];
-const CACHE_TTL = 3600000;
+const CACHE_TTL = 86400000;
 const TIME_SLOTS = [5000, 10000, 15000];
 
 function useTabData() {

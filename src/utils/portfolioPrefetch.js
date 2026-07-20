@@ -7,7 +7,7 @@ const TAB_META = [
   { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
 ];
 
-const CACHE_TTL = 3600000;
+const CACHE_TTL = 86400000;
 
 function isFresh(key) {
   try {

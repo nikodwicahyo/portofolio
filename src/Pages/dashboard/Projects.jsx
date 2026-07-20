@@ -340,22 +340,26 @@ export default function Projects() {
   const [uploading, setUploading] = useState(false);
 
   const fetchProjects = async () => {
+    const raw = localStorage.getItem("dashboard_projects_ts");
+    if (raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("projects")
       .select("id,title,description,img,link,github,tech_stack,features,created_at")
       .order("created_at", { ascending: false });
-    setProjects(data || []);
+    const rows = data || [];
+    setProjects(rows);
     setLoading(false);
     try {
-      localStorage.setItem("dashboard_projects", JSON.stringify(data || []));
+      localStorage.setItem("dashboard_projects_ts", String(Date.now()));
+      localStorage.setItem("dashboard_projects", JSON.stringify(rows));
     } catch { /* storage full */ }
   };
 
   useEffect(() => {
     const cached = localStorage.getItem("dashboard_projects");
     if (cached) {
-      setProjects(JSON.parse(cached));
+      try { setProjects(JSON.parse(cached)); } catch {}
       setLoading(false);
     }
     fetchProjects();

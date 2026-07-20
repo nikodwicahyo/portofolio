@@ -127,9 +127,9 @@ const AboutPage = () => {
     const fetchCounts = async () => {
       try {
         const [pResult, cResult, eResult] = await Promise.all([
-          supabase.from("projects").select("*", { count: "exact", head: true }),
-          supabase.from("certificates").select("*", { count: "exact", head: true }),
-          supabase.from("experiences").select("start_date, end_date").order("start_date", { ascending: true }),
+          supabase.from("projects").select("id", { count: "exact", head: true }),
+          supabase.from("certificates").select("id", { count: "exact", head: true }),
+          supabase.from("experiences").select("start_date").order("start_date", { ascending: true }).limit(1),
         ]);
         if (cancelled) return;
         const projectCount = pResult.error

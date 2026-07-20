@@ -343,22 +343,26 @@ export default function Experiences() {
   const [uploading, setUploading] = useState(false);
 
   const fetchExperiences = async () => {
+    const raw = localStorage.getItem("dashboard_experiences_ts");
+    if (raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("experiences")
       .select("id,company,position,description,start_date,end_date,location,logo_url,created_at")
       .order("start_date", { ascending: false });
-    setExperiences(data || []);
+    const rows = data || [];
+    setExperiences(rows);
     setLoading(false);
     try {
-      localStorage.setItem("dashboard_experiences", JSON.stringify(data || []));
+      localStorage.setItem("dashboard_experiences_ts", String(Date.now()));
+      localStorage.setItem("dashboard_experiences", JSON.stringify(rows));
     } catch { /* storage full */ }
   };
 
   useEffect(() => {
     const cached = localStorage.getItem("dashboard_experiences");
     if (cached) {
-      setExperiences(JSON.parse(cached));
+      try { setExperiences(JSON.parse(cached)); } catch {}
       setLoading(false);
     }
     fetchExperiences();

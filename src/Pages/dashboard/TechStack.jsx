@@ -248,22 +248,26 @@ export default function TechStack() {
   const [uploading, setUploading] = useState(false);
 
   const fetchItems = async () => {
+    const raw = localStorage.getItem("dashboard_tech_stacks_ts");
+    if (raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("tech_stacks")
       .select("id,name,icon,display_order")
       .order("display_order", { ascending: true });
-    setItems(data || []);
+    const rows = data || [];
+    setItems(rows);
     setLoading(false);
     try {
-      localStorage.setItem("dashboard_tech_stacks", JSON.stringify(data || []));
+      localStorage.setItem("dashboard_tech_stacks_ts", String(Date.now()));
+      localStorage.setItem("dashboard_tech_stacks", JSON.stringify(rows));
     } catch { /* storage full */ }
   };
 
   useEffect(() => {
     const cached = localStorage.getItem("dashboard_tech_stacks");
     if (cached) {
-      setItems(JSON.parse(cached));
+      try { setItems(JSON.parse(cached)); } catch {}
       setLoading(false);
     }
     fetchItems();

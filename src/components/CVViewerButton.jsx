@@ -10,6 +10,10 @@ const CVViewerButton = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const cached = localStorage.getItem("public_cv");
+    if (cached) {
+      try { const p = JSON.parse(cached); if (Date.now() - p.ts < 86400000) { setCv(p.data || null); setLoading(false); return; } } catch {}
+    }
     const fetchCV = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -21,6 +25,9 @@ const CVViewerButton = () => {
       if (!cancelled) {
         setCv(data || null);
         setLoading(false);
+        if (data) {
+          try { localStorage.setItem("public_cv", JSON.stringify({ data, ts: Date.now() })); } catch {}
+        }
       }
     };
     fetchCV();

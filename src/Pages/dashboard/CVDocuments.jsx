@@ -40,6 +40,10 @@ export default function CVDocuments() {
 
 
   const fetchCV = useCallback(async () => {
+    const cached = localStorage.getItem("dashboard_cv_ts")
+    if (cached && Date.now() - Number(cached) < 300000) {
+      return
+    }
     setLoading(true);
     const { data } = await supabase
       .from("cv_documents")
@@ -49,6 +53,7 @@ export default function CVDocuments() {
       .maybeSingle();
     setCv(data || null);
     setLoading(false);
+    try { localStorage.setItem("dashboard_cv_ts", String(Date.now())); } catch {}
   }, []);
 
   useEffect(() => {
