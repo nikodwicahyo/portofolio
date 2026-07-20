@@ -4,6 +4,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import ZoomOutIcon from "@mui/icons-material/ZoomOut";
+import FitScreenIcon from "@mui/icons-material/FitScreen";
 import { isBase64DataUrl } from "../utils/fileType";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -25,10 +28,21 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [renderKey, setRenderKey] = useState(0);
+  const [zoom, setZoom] = useState(null);
+  const [displayZoom, setDisplayZoom] = useState("Fit");
   const canvasRef = useRef(null);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
   const renderTaskRef = useRef(null);
+  const zoomRef = useRef(null);
+  const fitScaleRef = useRef(1);
+
+  const getEffectiveScale = useCallback((pageWidth, pageHeight, containerWidth, containerHeight) => {
+    if (zoomRef.current !== null) return zoomRef.current;
+    const fit = Math.min(containerWidth / pageWidth, containerHeight / pageHeight, 2);
+    fitScaleRef.current = fit;
+    return fit;
+  }, []);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -60,6 +74,9 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     setCurrentPage(1);
     setNumPages(0);
     pdfRef.current = null;
+    zoomRef.current = null;
+    setZoom(null);
+    setDisplayZoom("Fit");
 
     const loadPdf = async () => {
       const warn = console.warn; console.warn = () => {};
@@ -97,8 +114,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       const containerWidth = container.clientWidth;
       const containerHeight = container.clientHeight;
       const unscaled = page.getViewport({ scale: 1 });
-      const scale = Math.min(containerWidth / unscaled.width, containerHeight / unscaled.height, 2);
-      const viewport = page.getViewport({ scale });
+      const effectiveScale = getEffectiveScale(unscaled.width, unscaled.height, containerWidth, containerHeight);
+      const viewport = page.getViewport({ scale: effectiveScale });
 
       const ctx = canvas.getContext("2d");
       const dpr = window.devicePixelRatio || 1;
@@ -113,10 +130,13 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
       console.warn = warn;
+
+      const pct = zoomRef.current !== null ? Math.round(effectiveScale * 100) + "%" : "Fit";
+      setDisplayZoom(pct);
     } catch (err) {
       if (err?.name !== "RenderingCancelledException") console.error("PDF render failed:", err);
     }
-  }, [currentPage]);
+  }, [currentPage, getEffectiveScale]);
 
   useEffect(() => {
     if (!pdfRef.current || loading) return;
@@ -126,7 +146,9 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
 
   useEffect(() => {
     if (!isOpen || !pdfRef.current || loading) return;
-    const onResize = () => setRenderKey(k => k + 1);
+    const onResize = () => {
+      if (zoomRef.current === null) setRenderKey(k => k + 1);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [isOpen, loading]);
@@ -141,9 +163,42 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [isOpen, onClose]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!isOpen || !container) return;
+    const onWheel = (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.8 : 1.25;
+      const prev = zoomRef.current ?? fitScaleRef.current;
+      zoomRef.current = Math.max(0.1, Math.min(10, prev * delta));
+      setZoom(zoomRef.current);
+    };
+    container.addEventListener("wheel", onWheel, { passive: false });
+    return () => container.removeEventListener("wheel", onWheel);
+  }, [isOpen]);
+
+  useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
+
+  const handleZoomIn = () => {
+    const prev = zoomRef.current ?? fitScaleRef.current;
+    zoomRef.current = Math.min(10, prev * 1.25);
+    setZoom(zoomRef.current);
+  };
+
+  const handleZoomOut = () => {
+    const prev = zoomRef.current ?? fitScaleRef.current;
+    zoomRef.current = Math.max(0.1, prev / 1.25);
+    setZoom(zoomRef.current);
+  };
+
+  const handleFit = () => {
+    zoomRef.current = null;
+    setZoom(null);
+    setRenderKey(k => k + 1);
+  };
 
   return (
     <Modal
@@ -250,18 +305,59 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           )}
         </Box>
 
-        {numPages > 1 && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              py: 1.5,
-              bgcolor: "#0a0a1a",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 3,
+            py: 1,
+            bgcolor: "#0a0a1a",
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <IconButton
+              size="small"
+              onClick={handleZoomOut}
+              title="Zoom Out"
+              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+            >
+              <ZoomOutIcon fontSize="small" />
+            </IconButton>
+            <Typography
+              sx={{
+                color: "white",
+                fontSize: 13,
+                minWidth: 40,
+                textAlign: "center",
+                cursor: "pointer",
+                "&:hover": { color: "#a78bfa" },
+              }}
+              onClick={handleFit}
+              title="Fit to page"
+            >
+              {displayZoom}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={handleZoomIn}
+              title="Zoom In"
+              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+            >
+              <ZoomInIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={handleFit}
+              title="Fit to page"
+              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" }, ml: 0.5 }}
+            >
+              <FitScreenIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <IconButton
               size="small"
               disabled={currentPage <= 1}
@@ -282,7 +378,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               <ChevronRightIcon />
             </IconButton>
           </Box>
-        )}
+        </Box>
       </Box>
     </Modal>
   );
