@@ -43,7 +43,7 @@ export default function CVDocuments() {
     setLoading(true);
     const { data } = await supabase
       .from("cv_documents")
-      .select("*")
+      .select("id,file_data,filename,created_at,updated_at")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

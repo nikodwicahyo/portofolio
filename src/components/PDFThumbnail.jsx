@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const thumbnailCache = new Map();
+const CACHE_MAX = 20;
 
 const base64ToUint8Array = (base64) => {
   const stripped = base64.replace(/\s/g, "");
@@ -26,29 +27,41 @@ const getPDFData = (pdfUrl) => {
 
 const renderPDFToDataUrl = async (url) => {
   if (thumbnailCache.has(url)) {
-    return thumbnailCache.get(url);
+    const val = thumbnailCache.get(url);
+    thumbnailCache.delete(url);
+    thumbnailCache.set(url, val);
+    return val;
   }
 
   const pdfData = getPDFData(url);
-  const loadingTask = pdfjsLib.getDocument(pdfData);
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
+  const warn = console.warn; console.warn = () => {};
+  try {
+    const loadingTask = pdfjsLib.getDocument(pdfData);
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
 
-  const viewport = page.getViewport({ scale: 1.5 });
-  const canvas = document.createElement("canvas");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-  const ctx = canvas.getContext("2d");
-  const task = page.render({ canvasContext: ctx, viewport });
-  await task.promise;
+    const ctx = canvas.getContext("2d");
+    const task = page.render({ canvasContext: ctx, viewport });
+    await task.promise;
 
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-  thumbnailCache.set(url, dataUrl);
-  return dataUrl;
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    thumbnailCache.set(url, dataUrl);
+    if (thumbnailCache.size > CACHE_MAX) {
+      const oldest = thumbnailCache.keys().next().value;
+      if (oldest) thumbnailCache.delete(oldest);
+    }
+    return dataUrl;
+  } finally {
+    console.warn = warn;
+  }
 };
 
-const PDFThumbnail = ({ pdfUrl, className = "", style = {} }) => {
+const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
   const [thumbnail, setThumbnail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -61,21 +74,21 @@ const PDFThumbnail = ({ pdfUrl, className = "", style = {} }) => {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
+    let observer = null;
+    const timer = setTimeout(() => {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: "200px" }
+      );
+      if (ref.current) observer.observe(ref.current);
+    }, 200);
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
+    return () => { clearTimeout(timer); if (observer) observer.disconnect(); };
   }, [pdfUrl]);
 
   useEffect(() => {
@@ -131,6 +144,6 @@ const PDFThumbnail = ({ pdfUrl, className = "", style = {} }) => {
       )}
     </div>
   );
-};
+});
 
 export default PDFThumbnail;

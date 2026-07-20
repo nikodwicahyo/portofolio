@@ -16,11 +16,11 @@ const ProjectCardModal = ({ title, description, link }) => {
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-lg bg-gray-900 p-6 text-white shadow-lg animate-slide-up sm:p-8"
+            className="relative w-full max-w-md rounded-lg bg-gray-900 p-6 text-white shadow-lg sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button

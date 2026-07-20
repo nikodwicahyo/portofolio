@@ -35,7 +35,7 @@ export default function Comments() {
     setLoading(true);
     const { data } = await supabase
       .from("portfolio_comments")
-      .select("*")
+      .select("id,user_name,content,created_at,is_pinned")
       .order("is_pinned", { ascending: false })
       .order("created_at", { ascending: false });
     setComments(data || []);

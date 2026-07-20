@@ -148,7 +148,7 @@ const Komentar = () => {
             try {
                 const { data, error } = await supabase
                     .from('portfolio_comments')
-                    .select('*')
+                    .select('id,user_name,content,profile_image,created_at,is_pinned')
                     .eq('is_pinned', true)
                     .order('created_at', { ascending: false });
 
@@ -171,7 +171,7 @@ const Komentar = () => {
         const fetchComments = async () => {
             const { data, error } = await supabase
                 .from('portfolio_comments')
-                .select('*')
+                .select('id,user_name,content,profile_image,created_at,is_pinned')
                 .eq('is_pinned', false)
                 .order('created_at', { ascending: false });
             

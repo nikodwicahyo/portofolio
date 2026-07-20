@@ -214,15 +214,17 @@ const ExpShimmer = ({ count = 3 }) => (
   </div>
 );
 
-const ExperienceTimeline = ({ experiences, onSelect }) => (
+const ExperienceTimeline = memo(({ experiences, onSelect }) => {
+  const isMobile = window.innerWidth < 768;
+  return (
   <div className="relative">
     <div className="absolute left-4 sm:left-6 md:left-1/2 top-0 w-0.5 h-full bg-gradient-to-b from-[#6366f1] via-[#a855f7] to-[#6366f1] opacity-60 md:-translate-x-1/2" />
     <div className="space-y-6 sm:space-y-8 md:space-y-12">
       {experiences.map((exp, index) => {
-        const isEven = index % 2 === 0;
+        const even = index % 2 === 0;
         return (
           <div key={exp.id || index}
-            data-aos={window.innerWidth < 768 ? "fade-up" : isEven ? "fade-right" : "fade-left"}
+            data-aos={isMobile ? "fade-up" : even ? "fade-right" : "fade-left"}
             data-aos-duration="1000"
             data-aos-once="true"
             className="relative pl-10 sm:pl-14 md:pl-0"
@@ -233,70 +235,99 @@ const ExperienceTimeline = ({ experiences, onSelect }) => (
               <ExperienceCard exp={exp} onSelect={onSelect} />
             </div>
 
-            <div className="hidden md:flex items-start">
-              <div className={`w-5/12 ${isEven ? '' : 'invisible'}`}>
-                {isEven && <ExperienceCard exp={exp} onSelect={onSelect} />}
-              </div>
-              <div className="w-2/12 shrink-0" />
-              <div className={`w-5/12 ${isEven ? 'invisible' : ''}`}>
-                {!isEven && <ExperienceCard exp={exp} onSelect={onSelect} />}
-              </div>
+            <div className="hidden md:grid grid-cols-[5fr_2fr_5fr] items-start">
+              <div>{even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
+              <div />
+              <div>{!even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
             </div>
           </div>
         );
       })}
     </div>
   </div>
-);
+);});
 
 const TAB_META = [
-  { key: 'projects', order: { field: 'id', asc: false } },
-  { key: 'certificates', order: { field: 'id', asc: false } },
-  { key: 'experiences', order: { field: 'start_date', asc: false } },
-  { key: 'tech_stacks', order: { field: 'display_order', asc: true } },
+  { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link' },
+  { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
+  { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
+  { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
 ];
 
 const EMPTY = [];
+const CACHE_TTL = 3600000;
+const TIME_SLOTS = [5000, 10000, 15000];
 
 function useTabData() {
   const initial = {};
   for (const { key } of TAB_META) {
-    const raw = localStorage.getItem(key);
-    if (raw) { const p = JSON.parse(raw); if (p.length > 0) { initial[key] = { data: p, loading: false, error: null }; continue; } }
-    initial[key] = { data: EMPTY, loading: true, error: null };
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const p = JSON.parse(raw);
+        const data = Array.isArray(p) ? p : p.data;
+        if (data && data.length > 0) { initial[key] = { data, loading: false, error: null, fetched: true }; continue; }
+      }
+    } catch {}
+    initial[key] = { data: EMPTY, loading: false, error: null, fetched: false };
   }
 
   const [state, setState] = useState(initial);
-  const fetching = useRef(false);
+  const fetching = useRef({});
 
-  const doFetch = useCallback(async (retries = 2) => {
-    if (fetching.current) return;
-    fetching.current = true;
+  const cache = (key, data) => {
+    if (data.length === 0) return;
+    for (let i = 0; i < 2; i++) {
+      try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })); return; }
+      catch { if (i === 0) TAB_META.forEach(({ key: k }) => localStorage.removeItem(k)); }
+    }
+  };
 
-    const fetchOne = async ({ key, order }) => {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          const { data, error } = await supabase.from(key).select("*").order(order.field, { ascending: order.asc });
-          if (error) throw error;
-          if (data === null) throw new Error(`Supabase returned null for "${key}" — check RLS policies`);
-          setState(prev => ({ ...prev, [key]: { data, loading: false, error: null } }));
-          if (data.length > 0) localStorage.setItem(key, JSON.stringify(data));
-          return;
-        } catch (e) {
-          console.error(`[${key}] attempt ${attempt + 1}/${retries + 1} failed:`, e.message);
-          if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-          else setState(prev => ({ ...prev, [key]: { data: prev[key]?.data || EMPTY, loading: false, error: e.message } }));
+  const fetchTab = useCallback(async (key, retries = 2) => {
+    if (fetching.current[key]) return;
+    fetching.current[key] = true;
+    const meta = TAB_META.find(t => t.key === key);
+    if (!meta) { fetching.current[key] = false; return; }
+
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (!Array.isArray(p) && p.data?.length > 0 && Date.now() - p.timestamp < CACHE_TTL) {
+          fetching.current[key] = false; return;
         }
       }
-    };
+    } catch {}
 
-    await Promise.all(TAB_META.map(fetchOne));
-    fetching.current = false;
+    setState(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), TIME_SLOTS[attempt] || 15000);
+      try {
+        const { data, error } = await supabase.from(key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
+        clearTimeout(timer);
+        if (error) throw error;
+        if (data === null) throw new Error(`Supabase returned null for "${key}"`);
+        setState(prev => ({ ...prev, [key]: { data, loading: false, error: null, fetched: true } }));
+        cache(key, data);
+        fetching.current[key] = false;
+        return;
+      } catch (e) {
+        clearTimeout(timer);
+        const ms = TIME_SLOTS[attempt] || 15000;
+        const msg = e.name === 'AbortError' ? `Request timed out (${ms / 1000}s)` : e.message;
+        console.error(`[${key}] attempt ${attempt + 1}/${retries + 1} failed:`, msg);
+        if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        else {
+          setState(prev => ({ ...prev, [key]: { ...prev[key], loading: false, error: msg, fetched: true } }));
+          fetching.current[key] = false;
+        }
+      }
+    }
   }, []);
 
-  useEffect(() => { doFetch(); }, [doFetch]);
-
-  return { state, retry: () => { fetching.current = false; doFetch(); } };
+  return { state, fetchTab };
 }
 
 const RetryButton = ({ onClick }) => (
@@ -321,11 +352,11 @@ const ErrorState = ({ msg, onRetry }) => (
 );
 
 export default function FullWidthTabs() {
-  const { state: tabData, retry } = useTabData();
-  const { data: projects, loading: projLoading, error: projError } = tabData.projects;
-  const { data: certificates, loading: certLoading, error: certError } = tabData.certificates;
-  const { data: experiences, loading: expLoading, error: expError } = tabData.experiences;
-  const { data: techStacks, loading: techLoading, error: techError } = tabData.tech_stacks;
+  const { state: tabData, fetchTab } = useTabData();
+  const { data: projects, loading: projLoading, error: projError, fetched: projFetched } = tabData.projects;
+  const { data: certificates, loading: certLoading, error: certError, fetched: certFetched } = tabData.certificates;
+  const { data: experiences, loading: expLoading, error: expError, fetched: expFetched } = tabData.experiences;
+  const { data: techStacks, loading: techLoading, error: techError, fetched: techFetched } = tabData.tech_stacks;
 
   const [value, setValue] = useState(() => {
     const saved = sessionStorage.getItem('portfolioTab');
@@ -351,10 +382,29 @@ export default function FullWidthTabs() {
     }
   }, []);
 
+  useEffect(() => {
+    for (const { key } of TAB_META) {
+      const tab = tabData[key];
+      if (!tab.fetched && !tab.loading) fetchTab(key);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const key = TAB_META[value].key;
+    const tab = tabData[key];
+    if (!tab.fetched && !tab.loading) fetchTab(key);
+  }, [value, tabData, fetchTab]);
+
   const handleChange = (event, newValue) => {
     setValue(newValue);
     sessionStorage.setItem('portfolioTab', newValue);
   };
+
+  const prefetchTab = useCallback((index) => {
+    const key = TAB_META[index].key;
+    const tab = tabData[key];
+    if (!tab.fetched && !tab.loading) fetchTab(key);
+  }, [tabData, fetchTab]);
 
   const toggleShowMore = useCallback((type) => {
     if (type === 'projects') setShowAllProjects(p => !p);
@@ -371,19 +421,20 @@ export default function FullWidthTabs() {
     </div>
   );
 
-  const sectionContent = (loading, data, error, shimmer, icon, emptyMsg, done) => {
-    if (loading && data.length === 0) return shimmer;
-    if (error && data.length === 0) return <ErrorState msg={error} onRetry={retry} />;
+  const sectionContent = (loading, data, error, fetched, shimmer, icon, emptyMsg, done, key) => {
+    if ((loading || !fetched) && data.length === 0) return shimmer;
+    if (error && data.length === 0) return <ErrorState msg={error} onRetry={() => fetchTab(key)} />;
     if (!loading && data.length === 0) return emptyState(icon, emptyMsg);
     return done;
   };
 
-  const ExpSection = () => sectionContent(expLoading, experiences, expError,
+  const ExpSection = () => sectionContent(expLoading, experiences, expError, expFetched,
     <ExpShimmer />, Briefcase, "No experiences to display yet",
-    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />
+    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />,
+    'experiences'
   );
 
-  const ProjectSection = () => sectionContent(projLoading, projects, projError,
+  const ProjectSection = () => sectionContent(projLoading, projects, projError, projFetched,
     <CardGridLoading count={initialItems} cols={2} />, Code, "No projects to display yet",
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
@@ -403,9 +454,9 @@ export default function FullWidthTabs() {
         </div>
       )}
     </>
-  );
+  , 'projects');
 
-  const CertSection = () => sectionContent(certLoading, certificates, certError,
+  const CertSection = () => sectionContent(certLoading, certificates, certError, certFetched,
     <CardGridLoading count={initialItems} cols={3} />, Award, "No certificates to display yet",
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 w-full">
@@ -425,9 +476,9 @@ export default function FullWidthTabs() {
         </div>
       )}
     </>
-  );
+  , 'certificates');
 
-  const TechSection = () => sectionContent(techLoading, techStacks, techError,
+  const TechSection = () => sectionContent(techLoading, techStacks, techError, techFetched,
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 py-8">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="relative group">
@@ -519,6 +570,7 @@ export default function FullWidthTabs() {
               <Tab key={i}
                 icon={<tab.icon className="mb-0.5 sm:mb-2 w-3.5 h-3.5 sm:w-5 sm:h-5 transition-all duration-300" />}
                 label={<span className="text-[0.6rem] leading-tight sm:text-sm md:text-base">{tab.label}</span>}
+                onMouseEnter={() => prefetchTab(i)}
                 {...a11yProps(i)}
               />
             ))}

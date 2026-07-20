@@ -343,7 +343,7 @@ export default function Projects() {
     setLoading(true);
     const { data } = await supabase
       .from("projects")
-      .select("*")
+      .select("id,title,description,img,link,github,tech_stack,features,created_at")
       .order("created_at", { ascending: false });
     setProjects(data || []);
     setLoading(false);
@@ -370,35 +370,20 @@ export default function Projects() {
     return data.publicUrl;
   };
 
+  const removeOrphanImage = async (url) => {
+    if (!url) return;
+    try {
+      const fileName = url.split("/").pop();
+      if (fileName) await supabase.storage.from("project-images").remove([fileName]);
+    } catch { /* cleanup is best-effort */ }
+  };
+
   const handleCreate = async (form, file) => {
     setUploading(true);
     let imgUrl = "";
-    if (file) imgUrl = await uploadImage(file);
-    await supabase.from("projects").insert({
-      title: form.Title,
-      description: form.Description,
-      img: imgUrl,
-      tech_stack: form.TechStack.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      features: form.Features.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      link: form.Link,
-      github: form.Github,
-    });
-    setShowCreate(false);
-    setUploading(false);
-    fetchProjects();
-  };
-
-  const handleEdit = async (form, file) => {
-    setUploading(true);
-    let imgUrl = editProject.img || "";
-    if (file) imgUrl = await uploadImage(file);
-    await supabase
-      .from("projects")
-      .update({
+    try {
+      if (file) imgUrl = await uploadImage(file);
+      const { error } = await supabase.from("projects").insert({
         title: form.Title,
         description: form.Description,
         img: imgUrl,
@@ -410,11 +395,48 @@ export default function Projects() {
           .filter(Boolean),
         link: form.Link,
         github: form.Github,
-      })
-      .eq("id", editProject.id);
-    setEditProject(null);
-    setUploading(false);
-    fetchProjects();
+      });
+      if (error) throw error;
+      setShowCreate(false);
+      fetchProjects();
+    } catch (err) {
+      if (imgUrl) await removeOrphanImage(imgUrl);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEdit = async (form, file) => {
+    setUploading(true);
+    let imgUrl = editProject.img || "";
+    try {
+      if (file) imgUrl = await uploadImage(file);
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          title: form.Title,
+          description: form.Description,
+          img: imgUrl,
+          tech_stack: form.TechStack.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          features: form.Features.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          link: form.Link,
+          github: form.Github,
+        })
+        .eq("id", editProject.id);
+      if (error) throw error;
+      setEditProject(null);
+      fetchProjects();
+    } catch (err) {
+      if (imgUrl && file) await removeOrphanImage(imgUrl);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const deleteProject = async (id) => {
@@ -435,7 +457,7 @@ export default function Projects() {
   };
 
   return (
-    <div className="space-y-6z ">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3">

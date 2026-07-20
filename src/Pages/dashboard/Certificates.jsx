@@ -126,7 +126,7 @@ export default function Certificates() {
 
   const fetchCerts = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('certificates').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('certificates').select('id,img,created_at').order('created_at', { ascending: false })
     setCerts(data || [])
     setLoading(false)
     try {

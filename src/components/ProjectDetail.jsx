@@ -132,7 +132,11 @@ const ProjectDetails = () => {
     window.scrollTo(0, 0);
     setLoading(true);
 
-    const storedProjects = JSON.parse(localStorage.getItem("projects")) || [];
+    let storedProjects = [];
+    try {
+      const raw = localStorage.getItem("projects");
+      if (raw) storedProjects = JSON.parse(raw);
+    } catch { storedProjects = []; }
     const cached = findProject(storedProjects);
 
     if (cached) {
@@ -148,7 +152,7 @@ const ProjectDetails = () => {
       try {
         const { data, error } = await supabase
           .from("projects")
-          .select("*")
+          .select("id,title,description,img,link,github")
           .order("id", { ascending: false });
 
         if (error) throw error;

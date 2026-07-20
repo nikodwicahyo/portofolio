@@ -58,7 +58,7 @@ export default function PresenceWidget() {
     };
 
     fetchPresence();
-    const interval = setInterval(fetchPresence, 5000);
+    const interval = setInterval(fetchPresence, 15000);
     return () => clearInterval(interval);
   }, []);
 

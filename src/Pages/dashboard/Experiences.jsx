@@ -346,7 +346,7 @@ export default function Experiences() {
     setLoading(true);
     const { data } = await supabase
       .from("experiences")
-      .select("*")
+      .select("id,company,position,description,start_date,end_date,location,logo_url,created_at")
       .order("start_date", { ascending: false });
     setExperiences(data || []);
     setLoading(false);
@@ -373,31 +373,20 @@ export default function Experiences() {
     return data.publicUrl;
   };
 
+  const removeOrphanLogo = async (url) => {
+    if (!url) return;
+    try {
+      const fileName = url.split("/").pop();
+      if (fileName) await supabase.storage.from("experience-logos").remove([fileName]);
+    } catch { /* cleanup is best-effort */ }
+  };
+
   const handleCreate = async (form, file) => {
     setUploading(true);
     let logoUrl = "";
-    if (file) logoUrl = await uploadLogo(file);
-    await supabase.from("experiences").insert({
-      company: form.company,
-      position: form.position,
-      description: form.description || null,
-      start_date: form.start_date,
-      end_date: form.end_date || null,
-      location: form.location || null,
-      logo_url: logoUrl,
-    });
-    setShowCreate(false);
-    setUploading(false);
-    fetchExperiences();
-  };
-
-  const handleEdit = async (form, file) => {
-    setUploading(true);
-    let logoUrl = editExperience.logo_url || "";
-    if (file) logoUrl = await uploadLogo(file);
-    await supabase
-      .from("experiences")
-      .update({
+    try {
+      if (file) logoUrl = await uploadLogo(file);
+      const { error } = await supabase.from("experiences").insert({
         company: form.company,
         position: form.position,
         description: form.description || null,
@@ -405,11 +394,44 @@ export default function Experiences() {
         end_date: form.end_date || null,
         location: form.location || null,
         logo_url: logoUrl,
-      })
-      .eq("id", editExperience.id);
-    setEditExperience(null);
-    setUploading(false);
-    fetchExperiences();
+      });
+      if (error) throw error;
+      setShowCreate(false);
+      fetchExperiences();
+    } catch (err) {
+      if (logoUrl) await removeOrphanLogo(logoUrl);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEdit = async (form, file) => {
+    setUploading(true);
+    let logoUrl = editExperience.logo_url || "";
+    try {
+      if (file) logoUrl = await uploadLogo(file);
+      const { error } = await supabase
+        .from("experiences")
+        .update({
+          company: form.company,
+          position: form.position,
+          description: form.description || null,
+          start_date: form.start_date,
+          end_date: form.end_date || null,
+          location: form.location || null,
+          logo_url: logoUrl,
+        })
+        .eq("id", editExperience.id);
+      if (error) throw error;
+      setEditExperience(null);
+      fetchExperiences();
+    } catch (err) {
+      if (logoUrl && file) await removeOrphanLogo(logoUrl);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const deleteExperience = async (id) => {

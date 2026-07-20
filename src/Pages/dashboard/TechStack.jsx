@@ -251,7 +251,7 @@ export default function TechStack() {
     setLoading(true);
     const { data } = await supabase
       .from("tech_stacks")
-      .select("*")
+      .select("id,name,icon,display_order")
       .order("display_order", { ascending: true });
     setItems(data || []);
     setLoading(false);

@@ -41,7 +41,7 @@ const ContactPage = () => {
         name: data.name,
         email: data.email,
         message: data.message,
-      });
+      }, { timeout: 15000 });
 
       Swal.fire({
         title: 'Success!',
