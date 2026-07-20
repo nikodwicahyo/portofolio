@@ -82,9 +82,10 @@ const Navbar = () => {
                         <a
                             href="#Home"
                             onClick={(e) => scrollToSection(e, "#Home")}
-                            className="text-xl font-bold bg-gradient-to-r from-[#a855f7] to-[#6366f1] bg-clip-text text-transparent"
+                            className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-[#a855f7] to-[#6366f1] bg-clip-text text-transparent"
                         >
-                            Ekizr
+                            <img src="/Logo.png" alt="Logo" className="w-8 h-8 rounded-full" />
+                            Niko Dwicahyo Widiyanto
                         </a>
                     </div>
         

@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
 
 const CardProject = ({ Img, Title, Description, Link: ProjectLink, id }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+
   const handleLiveDemo = (e) => {
     if (!ProjectLink) {
       console.log("ProjectLink kosong");
@@ -27,10 +29,15 @@ const CardProject = ({ Img, Title, Description, Link: ProjectLink, id }) => {
 
         <div className="relative p-5 z-10">
           <div className="relative overflow-hidden rounded-lg">
+            {!imgLoaded && (
+              <div className="w-full h-full absolute inset-0 bg-white/5 animate-pulse rounded-lg" />
+            )}
             <img
               src={Img}
               alt={Title}
-              className="w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+              onLoad={() => setImgLoaded(true)}
+              className={`w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105 transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           </div>
 

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Swal from 'sweetalert2';
 
 const PAGE_SIZE = 10;
 
@@ -59,7 +60,18 @@ export default function Comments() {
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this comment?")) return;
+    const result = await Swal.fire({
+      title: 'Delete Comment?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6366f1',
+      confirmButtonText: 'Delete',
+      background: '#030014',
+      color: '#fff',
+    });
+    if (!result.isConfirmed) return;
     await supabase.from("portfolio_comments").delete().eq("id", id);
     fetchComments();
   };

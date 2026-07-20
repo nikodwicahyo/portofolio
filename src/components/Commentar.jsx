@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, ImagePlus, X, Pin } from 'lucide-react';
+import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'lucide-react';
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { supabase } from '../supabase';
@@ -17,7 +16,7 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
         {isPinned && (
             <div className="flex items-center gap-2 mb-3 text-indigo-400">
                 <Pin className="w-4 h-4" />
-                <span className="text-xs font-medium uppercase tracking-wide">Pinned Comment</span>
+                <span className="text-xs font-medium uppercase tracking-wide">Pinned Comment by Admin</span>
             </div>
         )}
         <div className="flex items-start gap-3">
@@ -45,11 +44,6 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
                         }`}>
                             {comment.user_name}
                         </h4>
-                        {isPinned && (
-                            <span className="px-2 py-0.5 text-xs bg-indigo-500/20 text-indigo-300 rounded-full">
-                                Admin
-                            </span>
-                        )}
                     </div>
                     <span className="text-xs text-gray-400 whitespace-nowrap">
                         {formatDate(comment.created_at)}
@@ -63,38 +57,10 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
     </div>
 ));
 
-const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
+const CommentForm = memo(({ onSubmit, isSubmitting }) => {
     const [newComment, setNewComment] = useState('');
     const [userName, setUserName] = useState('');
-    const [imagePreview, setImagePreview] = useState(null);
-    const [imageFile, setImageFile] = useState(null);
     const textareaRef = useRef(null);
-    const fileInputRef = useRef(null);
-
-    const handleImageChange = useCallback((e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Check file size (5MB limit)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB. Please choose a smaller image.');
-                // Reset the input
-                if (e.target) e.target.value = '';
-                return;
-            }
-            
-            // Check file type
-            if (!file.type.startsWith('image/')) {
-                alert('Please select a valid image file.');
-                if (e.target) e.target.value = '';
-                return;
-            }
-            
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => setImagePreview(reader.result);
-            reader.readAsDataURL(file);
-        }
-    }, []);
 
     const handleTextareaChange = useCallback((e) => {
         setNewComment(e.target.value);
@@ -108,14 +74,11 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
         e.preventDefault();
         if (!newComment.trim() || !userName.trim()) return;
         
-        onSubmit({ newComment, userName, imageFile });
+        onSubmit({ newComment, userName });
         setNewComment('');
         setUserName('');
-        setImagePreview(null);
-        setImageFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    }, [newComment, userName, imageFile, onSubmit]);
+    }, [newComment, userName, onSubmit]);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -150,56 +113,6 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
                 />
             </div>
 
-            <div className="space-y-2" data-aos="fade-up" data-aos-duration="1400">
-                <label className="block text-sm font-medium text-white">
-                    Profile Photo <span className="text-gray-400">(optional)</span>
-                </label>
-                <div className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl">
-                    {imagePreview ? (
-                        <div className="flex items-center gap-4">
-                            <img
-                                src={imagePreview}
-                                alt="Profile preview"
-                                className="w-16 h-16 rounded-full object-cover border-2 border-indigo-500/50"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setImagePreview(null);
-                                    setImageFile(null);
-                                    if (fileInputRef.current) fileInputRef.current.value = '';
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all group"
-                            >
-                                <X className="w-4 h-4" />
-                                <span>Remove Photo</span>
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="w-full">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleImageChange}
-                                accept="image/*"
-                                className="hidden"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-all border border-dashed border-indigo-500/50 hover:border-indigo-500 group"
-                            >
-                                <ImagePlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                <span>Choose Profile Photo</span>
-                            </button>
-                            <p className="text-center text-gray-400 text-sm mt-2">
-                                Max file size: 5MB
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
             <button
                 type="submit"
                 disabled={isSubmitting}
@@ -227,7 +140,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting, error }) => {
 
 const Komentar = () => {
     const [comments, setComments] = useState([]);
-    const [pinnedComment, setPinnedComment] = useState(null);
+    const [pinnedComments, setPinnedComments] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -239,30 +152,28 @@ const Komentar = () => {
         });
     }, []);
 
-    // Fetch pinned comment
+    // Fetch pinned comments
     useEffect(() => {
-        const fetchPinnedComment = async () => {
+        const fetchPinnedComments = async () => {
             try {
                 const { data, error } = await supabase
                     .from('portfolio_comments')
                     .select('*')
                     .eq('is_pinned', true)
-                    .single();
-                
-                if (error && error.code !== 'PGRST116') {
-                    console.error('Error fetching pinned comment:', error);
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching pinned comments:', error);
                     return;
                 }
-                
-                if (data) {
-                    setPinnedComment(data);
-                }
+
+                setPinnedComments(data || []);
             } catch (error) {
-                console.error('Error fetching pinned comment:', error);
+                console.error('Error fetching pinned comments:', error);
             }
         };
 
-        fetchPinnedComment();
+        fetchPinnedComments();
     }, []);
 
     // Fetch regular comments (excluding pinned) and set up real-time subscription
@@ -305,42 +216,17 @@ const Komentar = () => {
         };
     }, []);
 
-    const uploadImage = useCallback(async (imageFile) => {
-        if (!imageFile) return null;
-        
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `profile-images/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from('profile-images')
-            .upload(filePath, imageFile);
-
-        if (uploadError) {
-            throw uploadError;
-        }
-
-        const { data } = supabase.storage
-            .from('profile-images')
-            .getPublicUrl(filePath);
-
-        return data.publicUrl;
-    }, []);
-
-    const handleCommentSubmit = useCallback(async ({ newComment, userName, imageFile }) => {
+    const handleCommentSubmit = useCallback(async ({ newComment, userName }) => {
         setError('');
         setIsSubmitting(true);
         
         try {
-            const profileImageUrl = await uploadImage(imageFile);
-            
             const { error } = await supabase
                 .from('portfolio_comments')
                 .insert([
                     {
                         content: newComment,
                         user_name: userName,
-                        profile_image: profileImageUrl,
                         is_pinned: false,
                         created_at: new Date().toISOString()
                     }
@@ -355,7 +241,7 @@ const Komentar = () => {
         } finally {
             setIsSubmitting(false);
         }
-    }, [uploadImage]);
+    }, []);
 
     const formatDate = useCallback((timestamp) => {
         if (!timestamp) return '';
@@ -378,10 +264,14 @@ const Komentar = () => {
     }, []);
 
     // Calculate total comments (pinned + regular)
-    const totalComments = comments.length + (pinnedComment ? 1 : 0);
+    const totalComments = comments.length + pinnedComments.length;
 
     return (
-        <div className="w-full bg-gradient-to-b from-white/10 to-white/5 rounded-2xl  backdrop-blur-xl shadow-xl" data-aos="fade-up" data-aos-duration="1000">
+        <div
+            className="w-full bg-gradient-to-b from-white/10 to-white/5 rounded-2xl backdrop-blur-xl shadow-xl pb-4"
+            data-aos="fade-up"
+            data-aos-duration="1000"
+        >
             <div className="p-6 border-b border-white/10" data-aos="fade-down" data-aos-duration="800">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-indigo-500/20">
@@ -394,64 +284,56 @@ const Komentar = () => {
             </div>
             <div className="p-6 space-y-6">
                 {error && (
-                    <div className="flex items-center gap-2 p-4 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl" data-aos="fade-in">
+                    <div
+                        className="flex items-center gap-2 p-4 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl"
+                        data-aos="fade-in"
+                    >
                         <AlertCircle className="w-5 h-5 flex-shrink-0" />
                         <p className="text-sm">{error}</p>
                     </div>
                 )}
-                
                 <div>
-                    <CommentForm onSubmit={handleCommentSubmit} isSubmitting={isSubmitting} error={error} />
+                    <CommentForm
+                        onSubmit={handleCommentSubmit}
+                        isSubmitting={isSubmitting}
+                        error={error}
+                    />
                 </div>
-
-                <div className="space-y-4 h-[328px] overflow-y-auto overflow-x-hidden custom-scrollbar pt-1 pr-1 " data-aos="fade-up" data-aos-delay="200">
-                    {/* Pinned Comment */}
-                    {pinnedComment && (
-                        <div data-aos="fade-down" data-aos-duration="800">
-                            <Comment 
-                                comment={pinnedComment} 
+                <div
+                    className="space-y-4 h-[480px] overflow-y-auto overflow-x-hidden custom-scrollbar pt-1 pr-1"
+                    data-aos="fade-up"
+                    data-aos-delay="200"
+                >
+                    {pinnedComments.map((comment, idx) => (
+                        <div key={comment.id} data-aos="fade-down" data-aos-duration="800">
+                            <Comment
+                                comment={comment}
                                 formatDate={formatDate}
-                                index={0}
+                                index={idx}
                                 isPinned={true}
                             />
                         </div>
-                    )}
-                    
-                    {/* Regular Comments */}
-                    {comments.length === 0 && !pinnedComment ? (
+                    ))}
+                    {comments.length === 0 && pinnedComments.length === 0 ? (
                         <div className="text-center py-8" data-aos="fade-in">
                             <UserCircle2 className="w-12 h-12 text-indigo-400 mx-auto mb-3 opacity-50" />
-                            <p className="text-gray-400">No comments yet. Start the conversation!</p>
+                            <p className="text-gray-400">
+                                No comments yet. Start the conversation!
+                            </p>
                         </div>
                     ) : (
                         comments.map((comment, index) => (
-                            <Comment 
-                                key={comment.id} 
-                                comment={comment} 
+                            <Comment
+                                key={comment.id}
+                                comment={comment}
                                 formatDate={formatDate}
-                                index={index + (pinnedComment ? 1 : 0)}
+                                index={index + pinnedComments.length}
                                 isPinned={false}
                             />
                         ))
                     )}
                 </div>
             </div>
-            <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 6px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(99, 102, 241, 0.5);
-                    border-radius: 6px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(99, 102, 241, 0.7);
-                }
-            `}</style>
         </div>
     );
 };

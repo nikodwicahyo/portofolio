@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -16,6 +16,7 @@ import {
   Code,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { supabase } from "../supabase";
 import { toSlug } from "../utils/slug";
 
 const TECH_ICONS = {
@@ -59,8 +60,8 @@ const FeatureItem = ({ feature }) => {
 };
 
 const ProjectStats = ({ project }) => {
-  const techStackCount = project?.TechStack?.length || 0;
-  const featuresCount = project?.Features?.length || 0;
+  const techStackCount = project?.tech_stack?.length || 0;
+  const featuresCount = project?.features?.length || 0;
 
   return (
     <div className="grid grid-cols-2 gap-3 md:gap-4 p-3 md:p-4 bg-[#0a0a1a] rounded-xl overflow-hidden relative">
@@ -122,28 +123,57 @@ const ProjectDetails = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const findProject = useCallback((projects) => {
+    return projects.find((p) => toSlug(p.title) === slug);
+  }, [slug]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setLoading(true);
+
     const storedProjects = JSON.parse(localStorage.getItem("projects")) || [];
-    // Cari project berdasarkan slug yang di-generate dari Title
-    const selectedProject = storedProjects.find(
-      (p) => toSlug(p.Title) === slug,
-    );
+    const cached = findProject(storedProjects);
 
-    if (selectedProject) {
-      const enhancedProject = {
-        ...selectedProject,
-        Features: selectedProject.Features || [],
-        TechStack: selectedProject.TechStack || [],
-        Github: selectedProject.Github || "https://github.com/EkiZR",
-      };
-      setProject(enhancedProject);
+    if (cached) {
+      setProject({
+        ...cached,
+        github: cached.github || "https://github.com/nikodwicahyo/",
+      });
+      setLoading(false);
+      return;
     }
-  }, [slug]);
 
-  if (!project) {
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("projects")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          localStorage.setItem("projects", JSON.stringify(data));
+          const found = findProject(data);
+          if (found) {
+            setProject({
+              ...found,
+              github: found.github || "https://github.com/nikodwicahyo/",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching project:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [slug, findProject]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#030014] flex items-center justify-center">
         <div className="text-center space-y-6 animate-fadeIn">
@@ -156,43 +186,68 @@ const ProjectDetails = () => {
     );
   }
 
-  const projectUrl = `https://ekizr.com/project/${toSlug(project.Title)}`;
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-[#030014] flex items-center justify-center">
+        <div className="text-center space-y-6 animate-fadeIn">
+          <div className="w-16 h-16 md:w-24 md:h-24 mx-auto rounded-full bg-white/5 flex items-center justify-center">
+            <Code2 className="w-8 h-8 md:w-12 md:h-12 text-gray-500" />
+          </div>
+          <h2 className="text-xl md:text-3xl font-bold text-white">
+            Project Not Found
+          </h2>
+          <p className="text-gray-400 text-sm md:text-base">
+            The project you are looking for does not exist or has been removed.
+          </p>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all duration-300 border border-white/10 hover:border-white/20"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Go Back</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const projectUrl = `https://ekizr.com/project/${toSlug(project.title)}`;
 
   return (
     <>
       <Helmet>
-        <title>{project.Title} — Eki Zulfar Rachman</title>
+        <title>{project.title} - Niko Dwicahyo Widiyanto</title>
         <meta
           name="description"
           content={
-            project.Description
-              ? project.Description.slice(0, 155)
-              : `Project ${project.Title} oleh Eki Zulfar Rachman — Frontend Web Developer.`
+            project.description
+              ? project.description.slice(0, 155)
+              : `Project ${project.title} oleh Niko Dwicahyo Widiyanto - Full Stack Web Developer.`
           }
         />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={projectUrl} />
         <meta
           property="og:title"
-          content={`${project.Title} — Eki Zulfar Rachman`}
+          content={`${project.title} — Niko Dwicahyo Widiyanto`}
         />
         <meta
           property="og:description"
-          content={project.Description?.slice(0, 155)}
+          content={project.description?.slice(0, 155)}
         />
         <meta property="og:url" content={projectUrl} />
         <meta property="og:type" content="website" />
-        {project.Img && <meta property="og:image" content={project.Img} />}
+        {project.img && <meta property="og:image" content={project.img} />}
         <script type="application/ld+json">{`
           {
             "@context": "https://schema.org",
             "@type": "CreativeWork",
-            "name": "${project.Title}",
-            "description": "${project.Description?.replace(/"/g, '\\"')}",
+            "name": "${project.title}",
+            "description": "${project.description?.replace(/"/g, '\\"')}",
             "url": "${projectUrl}",
             "author": {
               "@type": "Person",
-              "name": "Eki Zulfar Rachman",
+              "name": "Niko Dwicahyo Widiyanto",
               "url": "https://ekizr.com"
             }
           }
@@ -222,7 +277,7 @@ const ProjectDetails = () => {
               <div className="flex items-center space-x-1 md:space-x-2 text-sm md:text-base text-white/50">
                 <span>Projects</span>
                 <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="text-white/90 truncate">{project.Title}</span>
+                <span className="text-white/90 truncate">{project.title}</span>
               </div>
             </div>
 
@@ -230,7 +285,7 @@ const ProjectDetails = () => {
               <div className="space-y-6 md:space-y-10 animate-slideInLeft">
                 <div className="space-y-4 md:space-y-6">
                   <h1 className="text-3xl md:text-6xl font-bold bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 bg-clip-text text-transparent leading-tight">
-                    {project.Title}
+{project.title}
                   </h1>
                   <div className="relative h-1 w-16 md:w-24">
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse" />
@@ -240,7 +295,7 @@ const ProjectDetails = () => {
 
                 <div className="prose prose-invert max-w-none">
                   <p className="text-base md:text-lg text-gray-300/90 leading-relaxed">
-                    {project.Description}
+                    {project.description}
                   </p>
                 </div>
 
@@ -248,7 +303,7 @@ const ProjectDetails = () => {
 
                 <div className="flex flex-wrap gap-3 md:gap-4">
                   <a
-                    href={project.Link}
+                    href={project.link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 bg-gradient-to-r from-blue-600/10 to-purple-600/10 hover:from-blue-600/20 hover:to-purple-600/20 text-blue-300 rounded-xl transition-all duration-300 border border-blue-500/20 hover:border-blue-500/40 backdrop-blur-xl overflow-hidden text-sm md:text-base"
@@ -259,12 +314,12 @@ const ProjectDetails = () => {
                   </a>
 
                   <a
-                    href={project.Github}
+                    href={project.github}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 bg-gradient-to-r from-purple-600/10 to-pink-600/10 hover:from-purple-600/20 hover:to-pink-600/20 text-purple-300 rounded-xl transition-all duration-300 border border-purple-500/20 hover:border-purple-500/40 backdrop-blur-xl overflow-hidden text-sm md:text-base"
                     onClick={(e) =>
-                      !handleGithubClick(project.Github) && e.preventDefault()
+                      !handleGithubClick(project.github) && e.preventDefault()
                     }
                   >
                     <div className="absolute inset-0 translate-y-[100%] bg-gradient-to-r from-purple-600/10 to-pink-600/10 transition-transform duration-300 group-hover:translate-y-[0%]" />
@@ -278,9 +333,9 @@ const ProjectDetails = () => {
                     <Code2 className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                     Technologies Used
                   </h3>
-                  {project.TechStack.length > 0 ? (
+                  {project.tech_stack && project.tech_stack.length > 0 ? (
                     <div className="flex flex-wrap gap-2 md:gap-3">
-                      {project.TechStack.map((tech, index) => (
+                      {(project.tech_stack || []).map((tech, index) => (
                         <TechBadge key={index} tech={tech} />
                       ))}
                     </div>
@@ -296,10 +351,10 @@ const ProjectDetails = () => {
                 <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl group">
                   <div className="absolute inset-0 bg-gradient-to-t from-[#030014] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <img
-                    src={project.Img}
-                    alt={project.Title}
+src={project.img}
+                      alt={project.title}
                     className="w-full object-cover transform transition-transform duration-700 will-change-transform group-hover:scale-105"
-                    onLoad={() => setIsImageLoaded(true)}
+                    
                   />
                   <div className="absolute inset-0 border-2 border-white/0 group-hover:border-white/10 transition-colors duration-300 rounded-2xl" />
                 </div>
@@ -309,9 +364,9 @@ const ProjectDetails = () => {
                     <Star className="w-5 h-5 text-yellow-400 group-hover:rotate-[20deg] transition-transform duration-300" />
                     Key Features
                   </h3>
-                  {project.Features.length > 0 ? (
+                  {(project.features || []).length > 0 ? (
                     <ul className="list-none space-y-2">
-                      {project.Features.map((feature, index) => (
+                      {(project.features || []).map((feature, index) => (
                         <FeatureItem key={index} feature={feature} />
                       ))}
                     </ul>
@@ -325,69 +380,6 @@ const ProjectDetails = () => {
             </div>
           </div>
         </div>
-
-        <style jsx>{`
-          @keyframes blob {
-            0% {
-              transform: translate(0px, 0px) scale(1);
-            }
-            33% {
-              transform: translate(30px, -50px) scale(1.1);
-            }
-            66% {
-              transform: translate(-20px, 20px) scale(0.9);
-            }
-            100% {
-              transform: translate(0px, 0px) scale(1);
-            }
-          }
-          .animate-blob {
-            animation: blob 10s infinite;
-          }
-          .animation-delay-2000 {
-            animation-delay: 2s;
-          }
-          .animation-delay-4000 {
-            animation-delay: 4s;
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.7s ease-out;
-          }
-          .animate-slideInLeft {
-            animation: slideInLeft 0.7s ease-out;
-          }
-          .animate-slideInRight {
-            animation: slideInRight 0.7s ease-out;
-          }
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
-          @keyframes slideInLeft {
-            from {
-              opacity: 0;
-              transform: translateX(-30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-          @keyframes slideInRight {
-            from {
-              opacity: 0;
-              transform: translateX(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-        `}</style>
       </div>
     </>
   );

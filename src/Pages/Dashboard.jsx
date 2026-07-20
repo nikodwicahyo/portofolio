@@ -4,12 +4,18 @@ import { supabase } from '../supabase'
 import Projects from './dashboard/Projects'
 import Certificates from './dashboard/Certificates'
 import Comments from './dashboard/Comments'
-import { FolderGit2, Award, MessageSquare, LogOut, LayoutDashboard, Menu } from 'lucide-react'
+import Experiences from './dashboard/Experiences'
+import TechStack from './dashboard/TechStack'
+import CVDocuments from './dashboard/CVDocuments'
+import { FolderGit2, Award, MessageSquare, LogOut, LayoutDashboard, Menu, Briefcase, Boxes, FileText } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { to: 'projects', label: 'Projects', icon: FolderGit2 },
-  { to: 'certificates', label: 'Certificates', icon: Award },
-  { to: 'comments', label: 'Comments', icon: MessageSquare },
+  { to: '/dashboard/projects', label: 'Projects', icon: FolderGit2 },
+  { to: '/dashboard/experiences', label: 'Experiences', icon: Briefcase },
+  { to: '/dashboard/certificates', label: 'Certificates', icon: Award },
+  { to: '/dashboard/cv', label: 'CV', icon: FileText },
+  { to: '/dashboard/tech-stacks', label: 'Tech Stacks', icon: Boxes },
+  { to: '/dashboard/comments', label: 'Comments', icon: MessageSquare },
 ]
 
 export default function Dashboard() {
@@ -48,7 +54,8 @@ export default function Dashboard() {
       <nav className="flex flex-col gap-1 flex-1 min-h-0">
         <p className="text-[10px] text-gray-600 uppercase tracking-widest px-3 mb-2 shrink-0">Menu</p>
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-          const active = location.pathname.includes(to)
+          const currentPath = location.pathname.replace(/\/$/, '')
+          const active = currentPath === to || currentPath.startsWith(to + '/')
           return (
             <Link
               key={to}
@@ -123,9 +130,12 @@ export default function Dashboard() {
         {/* Hanya main yang overflow-y-auto — scrollbar bisa diklik normal */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Routes>
-            <Route index element={<Navigate to="projects" replace />} />
+            <Route index element={<Navigate to="/dashboard/projects" replace />} />
             <Route path="projects" element={<Projects />} />
+            <Route path="experiences" element={<Experiences />} />
             <Route path="certificates" element={<Certificates />} />
+            <Route path="cv" element={<CVDocuments />} />
+            <Route path="tech-stacks" element={<TechStack />} />
             <Route path="comments" element={<Comments />} />
           </Routes>
         </main>

@@ -12,6 +12,7 @@ import Footer from "./components/Footer";
 import Login from "./Pages/Login";
 import Dashboard from "./Pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
 const ContactPage = lazy(() => import("./Pages/Contact"));
@@ -33,14 +34,15 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
       {!showWelcome && (
         <>
           <Navbar />
-      
-          <Home />
-          <About />
-          <Suspense fallback={<div className="h-20" />}>
-            <Portofolio />
-            <ContactPage />
+          <div className="pt-16">
+            <Home />
+            <About />
+            <Suspense fallback={<div className="h-20" />}>
+              <Portofolio />
+              <ContactPage />
           </Suspense>
           <Footer />
+          </div>
         </>
       )}
     </>
@@ -60,12 +62,12 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   return (
-    
+    <ErrorBoundary>
     <HelmetProvider>
       <div className="pointer-events-none">
   <AnimatedBackground />
 </div>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* PUBLIC */}
           <Route
@@ -105,6 +107,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </HelmetProvider>
+    </ErrorBoundary>
   );
 }
 

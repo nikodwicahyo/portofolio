@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Share2, User, Mail, MessageSquare, Send } from "lucide-react";
-import { Link } from "react-router-dom";
 import SocialLinks from "../components/SocialLinks";
 import Komentar from "../components/Commentar";
 import Swal from "sweetalert2";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import axios from "axios";
+import { useForm } from "react-hook-form";
 
 const ContactPage = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm();
 
   useEffect(() => {
     AOS.init({
@@ -22,21 +22,20 @@ const ContactPage = () => {
     });
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const onSubmit = async (data) => {
+    const accessKey = import.meta.env.VITE_FORMLY_ACCESS_KEY;
+    if (!accessKey) {
+      Swal.fire({
+        icon: 'error', title: 'Configuration Error',
+        text: 'Contact form is not configured. Please try again later.',
+        confirmButtonColor: '#6366f1', background: '#030014', color: '#fff',
+      });
+      return;
+    }
 
     Swal.fire({
-      title: 'Mengirim Pesan...',
-      html: 'Harap tunggu selagi kami mengirim pesan Anda',
+      title: 'Sending Message...',
+      html: 'Please wait while we send your message',
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -44,66 +43,36 @@ const ContactPage = () => {
     });
 
     try {
-      // Ganti dengan email Anda di FormSubmit
-      const formSubmitUrl = 'https://formsubmit.co/ekizulfarrachman@gmail.com';
-      
-      // Siapkan data form untuk FormSubmit
-      const submitData = new FormData();
-      submitData.append('name', formData.name);
-      submitData.append('email', formData.email);
-      submitData.append('message', formData.message);
-      submitData.append('_subject', 'Pesan Baru dari Website Portfolio');
-      submitData.append('_captcha', 'false'); // Nonaktifkan captcha
-      submitData.append('_template', 'table'); // Format email sebagai tabel
-
-      await axios.post(formSubmitUrl, submitData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await axios.post('https://formly.email/submit', {
+        access_key: accessKey,
+        subject: 'New Message From Your Portofolio Web',
+        name: data.name,
+        email: data.email,
+        message: data.message,
       });
 
-     
       Swal.fire({
-        title: 'Berhasil!',
-        text: 'Pesan Anda telah berhasil terkirim!',
+        title: 'Success!',
+        text: 'Your message has been sent successfully!',
         icon: 'success',
         confirmButtonColor: '#6366f1',
         timer: 2000,
         timerProgressBar: true
       });
 
-      setFormData({
-        name: "",
-        email: "",
-        message: "",
-      });
+      reset();
 
     } catch (error) {
-      if (error.request && error.request.status === 0) {
-        Swal.fire({
-          title: 'Berhasil!',
-          text: 'Pesan Anda telah berhasil terkirim!',
-          icon: 'success',
-          confirmButtonColor: '#6366f1',
-          timer: 2000,
-          timerProgressBar: true
-        });
+      const message =
+        error.response?.data?.message ||
+        'An error occurred. Please try again later.';
 
-        setFormData({
-          name: "",
-          email: "",
-          message: "",
-        });
-      } else {
-        Swal.fire({
-          title: 'Gagal!',
-          text: 'Terjadi kesalahan. Silakan coba lagi nanti.',
-          icon: 'error',
-          confirmButtonColor: '#6366f1'
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
+      Swal.fire({
+        title: 'Failed!',
+        text: message,
+        icon: 'error',
+        confirmButtonColor: '#6366f1'
+      });
     }
   };
 
@@ -125,7 +94,7 @@ const ContactPage = () => {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Hubungi Saya
+            Contact Me
           </span>
         </h2>
         <p
@@ -133,12 +102,12 @@ const ContactPage = () => {
           data-aos-duration="1100"
           className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base mt-2"
         >
-          Punya pertanyaan? Kirimi saya pesan, dan saya akan segera membalasnya.
+          Have a question? Send me a message, and I’ll get back to you right away.
         </p>
       </div>
 
       <div
-        className="h-auto py-10 flex items-center justify-center 2xl:pr-[3.1%] lg:pr-[3.8%]  md:px-0"
+        className="h-auto py-10 flex items-center justify-center 2xl:pr-[3.1%] lg:pr-[3.8%]  md:px-0 scroll-mt-16"
         id="Contact"
       >
         <div className="container px-[1%] grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-[45%_55%] 2xl:grid-cols-[35%_65%] gap-12" >
@@ -149,17 +118,17 @@ const ContactPage = () => {
             <div className="flex justify-between items-start mb-8">
               <div>
                 <h2 className="text-4xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]">
-                  Hubungi
+                  Hire Me
                 </h2>
-                <p className="text-gray-400">
-                  Ada yang ingin didiskusikan? Kirim saya pesan dan mari kita bicara.
+                <p className="text-sm text-gray-400">
+                  Let's build something extraordinary with intelligent AI solutions, I'm ready to deliver. Send me an email below, and let's discuss.
                 </p>
               </div>
               <Share2 className="w-10 h-10 text-[#6366f1] opacity-50" />
             </div>
 
             <form 
-              onSubmit={handleSubmit}
+              onSubmit={handleSubmit(onSubmit)}
               className="space-y-6"
             >
               <div
@@ -170,14 +139,14 @@ const ContactPage = () => {
                 <User className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
                 <input
                   type="text"
-                  name="name"
-                  placeholder="Nama Anda"
-                  value={formData.name}
-                  onChange={handleChange}
+                  placeholder="Your Name"
+                  {...register('name', { required: 'Name is required' })}
                   disabled={isSubmitting}
                   className="w-full p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 disabled:opacity-50"
-                  required
                 />
+                {errors.name && (
+                  <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>
+                )}
               </div>
               <div
                 data-aos="fade-up"
@@ -187,14 +156,20 @@ const ContactPage = () => {
                 <Mail className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
                 <input
                   type="email"
-                  name="email"
-                  placeholder="Email Anda"
-                  value={formData.email}
-                  onChange={handleChange}
+                  placeholder="Your Email"
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: 'Invalid email address',
+                    },
+                  })}
                   disabled={isSubmitting}
                   className="w-full p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 disabled:opacity-50"
-                  required
                 />
+                {errors.email && (
+                  <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>
+                )}
               </div>
               <div
                 data-aos="fade-up"
@@ -203,14 +178,20 @@ const ContactPage = () => {
               >
                 <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
                 <textarea
-                  name="message"
-                  placeholder="Pesan Anda"
-                  value={formData.message}
-                  onChange={handleChange}
+                  placeholder="Your Message"
+                  {...register('message', {
+                    required: 'Message is required',
+                    minLength: {
+                      value: 10,
+                      message: 'Message must be at least 10 characters',
+                    },
+                  })}
                   disabled={isSubmitting}
                   className="w-full resize-none p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 h-[9.9rem] disabled:opacity-50"
-                  required
                 />
+                {errors.message && (
+                  <p className="text-red-400 text-xs mt-1">{errors.message.message}</p>
+                )}
               </div>
               <button
                 data-aos="fade-up"
@@ -220,7 +201,7 @@ const ContactPage = () => {
                 className="w-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#6366f1]/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <Send className="w-5 h-5" />
-                {isSubmitting ? 'Mengirim...' : 'Kirim Pesan'}
+                {isSubmitting ? 'Sending...' : 'Send Message'}
               </button>
             </form>
 

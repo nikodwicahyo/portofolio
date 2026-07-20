@@ -20,18 +20,18 @@ const StatusBadge = memo(() => (
 
 const MainTitle = memo(() => (
   <div className="space-y-2" data-aos="fade-up" data-aos-delay="600">
-    <h1 className="text-5xl sm:text-6xl md:text-6xl lg:text-6xl xl:text-7xl font-bold tracking-tight">
+    <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-4xl xl:text-6xl font-bold tracking-tight">
       <span className="relative inline-block">
         <span className="absolute -inset-2 bg-gradient-to-r from-[#6366f1] to-[#a855f7] blur-2xl opacity-20"></span>
         <span className="relative bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent">
-          Frontend
+          Full Stack Dev
         </span>
       </span>
       <br />
       <span className="relative inline-block mt-2">
         <span className="absolute -inset-2 bg-gradient-to-r from-[#6366f1] to-[#a855f7] blur-2xl opacity-20"></span>
         <span className="relative bg-gradient-to-r from-[#6366f1] to-[#a855f7] bg-clip-text text-transparent">
-          Developer
+          AI Engineer
         </span>
       </span>
     </h1>
@@ -39,7 +39,7 @@ const MainTitle = memo(() => (
 ));
 
 const TechStack = memo(({ tech }) => (
-  <div className="px-4 py-2 hidden sm:block rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors">
+  <div className="px-4 py-2 hidden sm:block rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-xs text-gray-300 hover:bg-white/10 transition-colors">
     {tech}
   </div>
 ));
@@ -62,7 +62,11 @@ const CTAButton = memo(({ href, text, icon: Icon }) => (
 ));
 
 const SocialLink = memo(({ icon: Icon, link, label }) => (
-  <a href={link} target="_blank" rel="noopener noreferrer" aria-label={label}>
+  <a
+    href={link}
+    {...(link.startsWith("mailto") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+    aria-label={label}
+  >
     <button className="group relative p-3"
       aria-label={label}>
       <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
@@ -76,12 +80,13 @@ const SocialLink = memo(({ icon: Icon, link, label }) => (
 const TYPING_SPEED = 100;
 const ERASING_SPEED = 50;
 const PAUSE_DURATION = 2000;
-const WORDS = ["Network & Telecom Student", "Tech Enthusiast"];
-const TECH_STACK = ["React", "Javascript", "Node.js", "Tailwind"];
+const WORDS = ["System Engineer", "IT Infrastructure", "Software Engineer", "Tech Enthusiast"];
+const TECH_STACK = ["Python", "PHP", "Go", "Javascript", "SQL", "AI", "Machine Learning", "Deep Learning", "Internet of Things"];
 const SOCIAL_LINKS = [
-  { icon: Github, link: "https://github.com/EkiZR", label: "GitHub Profile" },
-  { icon: Linkedin, link: "https://www.linkedin.com/in/ekizr/", label: "LinkedIn Profile" },
-  { icon: Instagram, link: "https://www.instagram.com/ekizr_/?hl=id", label: "Instagram Profile" }
+  { icon: Github, link: "https://github.com/nikodwicahyo/", label: "GitHub Profile" },
+  { icon: Linkedin, link: "https://www.linkedin.com/in/nikodwicahyo/", label: "LinkedIn Profile" },
+  { icon: Instagram, link: "https://www.instagram.com/nikodwchy/", label: "Instagram Profile" },
+  { icon: Mail, link: "mailto:nikodwchy@gmail.com", label: "Email" }
 ];
 
 const Home = () => {
@@ -140,34 +145,34 @@ const Home = () => {
   return (
     <>
       <Helmet>
-        <title>Eki Zulfar Rachman — Frontend Web Developer</title>
-        <meta name="description" content="Website resmi Eki Zulfar Rachman, Front-End Web Developer. Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan." />
+        <title>Niko Dwicahyo Widiyanto - Full Stack Web Developer - AI Engineer</title>
+        <meta name="description" content="Website resmi Niko Dwicahyo Widiyanto, Full Stack Web Developer, AI Engineer. Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan." />
      <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://ekizr.com" />
-        <meta property="og:title" content="Eki Zulfar Rachman — Frontend Web Developer" />
-     <meta property="og:description" content="Website resmi dan portofolio Eki Zulfar Rachman, Front-End Web Developer." />
+        <meta property="og:title" content="Niko Dwicahyo Widiyanto - Full Stack Web Developer - AI Engineer" />
+     <meta property="og:description" content="Website resmi dan portofolio Niko Dwicahyo Widiyanto, Full-Stack Web Developer." />
         <meta property="og:url" content="https://ekizr.com" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">{`
           {
             "@context": "https://schema.org",
             "@type": "Person",
-            "name": "Eki Zulfar Rachman",
-            "jobTitle": "Frontend Developer",
+            "name": "Niko Dwicahyo Widiyanto",
+            "jobTitle": "Full Stack Web Developer, AI Engineer",
             "url": "https://ekizr.com",
             "sameAs": [
-              "https://github.com/EkiZR",
-              "https://www.linkedin.com/in/ekizr/",
-              "https://www.instagram.com/ekizr_/"
+              "https://github.com/nikodwicahyo/",
+              "https://www.linkedin.com/in/nikodwicahyo/",
+              "https://www.instagram.com/nikodwchy/"
             ]
           }
         `}</script>
       </Helmet>
 
-      <div className="min-h-screen bg-[#030014] overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%]" id="Home">
+      <div className="min-h-screen bg-[#030014] overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] scroll-mt-16" id="Home">
         <div className={`relative z-10 transition-all duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}>
-          <div className="container mx-auto min-h-screen">
-            <div className="flex flex-col lg:flex-row items-center justify-center h-screen md:justify-between gap-0 sm:gap-12 lg:gap-20">
+            <div className="container mx-auto min-h-[calc(100vh-4rem)]">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-between min-h-[calc(100vh-4rem)] gap-0 sm:gap-12 lg:gap-20 pt-2 sm:pt-3">
               {/* Left Column */}
               <div className="w-full lg:w-1/2 space-y-6 sm:space-y-8 text-left lg:text-left order-1 lg:order-1 lg:mt-0"
                 data-aos="fade-right"
@@ -185,10 +190,10 @@ const Home = () => {
                   </div>
 
                   {/* Description */}
-                  <p className="text-base md:text-lg text-gray-400 max-w-xl leading-relaxed font-light"
+                  <p className="text-sm sm:text-base lg:text-lg text-gray-400 max-w-xl leading-relaxed font-light"
                     data-aos="fade-up"
                     data-aos-delay="1000">
-                    Menciptakan Website Yang Inovatif, Fungsional, dan User-Friendly untuk Solusi Digital.
+                    Architecting ecosystems with artificial intelligent to transform complex ideas into seamless digital solutions.
                   </p>
 
                   {/* Tech Stack */}

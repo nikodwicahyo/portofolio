@@ -1,5 +1,7 @@
-import React, { useEffect, memo, useMemo } from "react"
-import { FileText, Code, Award, Globe, ArrowUpRight, Sparkles, UserCheck } from "lucide-react"
+import React, { useEffect, useState, memo, useMemo } from "react"
+import { supabase } from "../supabase"
+import { Code, Award, Globe, ArrowUpRight, Sparkles } from "lucide-react"
+import CVViewerButton from "../components/CVViewerButton"
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 
@@ -50,7 +52,7 @@ const ProfileImage = memo(() => (
           <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 via-transparent to-blue-500/20 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block" />
           
           <img
-            src="/Photo.jpg"
+            src="/Photo.png"
             alt="Profile"
             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-2"
             loading="lazy"
@@ -113,21 +115,53 @@ const StatCard = memo(({ icon: Icon, color, value, label, description, animation
 ));
 
 const AboutPage = () => {
-  // Memoized calculations
-  const { totalProjects, totalCertificates, YearExperience } = useMemo(() => {
-    const storedProjects = JSON.parse(localStorage.getItem("projects") || "[]");
-    const storedCertificates = JSON.parse(localStorage.getItem("certificates") || "[]");
-    
-    const startDate = new Date("2021-11-06");
-    const today = new Date();
-    const experience = today.getFullYear() - startDate.getFullYear() -
-      (today < new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate()) ? 1 : 0);
+  const [counts, setCounts] = useState(() => {
+    const p = Number(localStorage.getItem("about_projects_count")) ||
+              (JSON.parse(localStorage.getItem("projects") || "[]").length) || 0;
+    const c = Number(localStorage.getItem("about_certificates_count")) ||
+              (JSON.parse(localStorage.getItem("certificates") || "[]").length) || 0;
+    const e = Number(localStorage.getItem("about_years_experience")) || 0;
+    return { projects: p, certificates: c, yearsExperience: e };
+  });
 
-    return {
-      totalProjects: storedProjects.length,
-      totalCertificates: storedCertificates.length,
-      YearExperience: experience
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const [pResult, cResult, eResult] = await Promise.all([
+          supabase.from("projects").select("*", { count: "exact", head: true }),
+          supabase.from("certificates").select("*", { count: "exact", head: true }),
+          supabase.from("experiences").select("start_date, end_date").order("start_date", { ascending: true }),
+        ]);
+        if (cancelled) return;
+        const projectCount = pResult.error
+          ? Number(localStorage.getItem("about_projects_count")) || 0
+          : pResult.count;
+        const certCount = cResult.error
+          ? Number(localStorage.getItem("about_certificates_count")) || 0
+          : cResult.count;
+        let yearsExp = Number(localStorage.getItem("about_years_experience")) || 0;
+        if (!eResult.error && eResult.data && eResult.data.length > 0) {
+          const earliest = new Date(eResult.data[0].start_date);
+          const now = new Date();
+          yearsExp = now.getFullYear() - earliest.getFullYear() -
+            (now < new Date(now.getFullYear(), earliest.getMonth(), earliest.getDate()) ? 1 : 0);
+          localStorage.setItem("about_years_experience", String(yearsExp));
+        }
+        localStorage.setItem("about_projects_count", String(projectCount));
+        localStorage.setItem("about_certificates_count", String(certCount));
+        setCounts({ projects: projectCount, certificates: certCount, yearsExperience: yearsExp });
+      } catch {
+        if (!cancelled) {
+          const p = Number(localStorage.getItem("about_projects_count")) || 0;
+          const c = Number(localStorage.getItem("about_certificates_count")) || 0;
+          const e = Number(localStorage.getItem("about_years_experience")) || 0;
+          setCounts({ projects: p, certificates: c, yearsExperience: e });
+        }
+      }
     };
+    fetchCounts();
+    return () => { cancelled = true; };
   }, []);
 
   // Optimized AOS initialization
@@ -159,7 +193,7 @@ const AboutPage = () => {
     {
       icon: Code,
       color: "from-[#6366f1] to-[#a855f7]",
-      value: totalProjects,
+      value: counts.projects,
       label: "Total Projects",
       description: "Innovative web solutions crafted",
       animation: "fade-right",
@@ -167,7 +201,7 @@ const AboutPage = () => {
     {
       icon: Award,
       color: "from-[#a855f7] to-[#6366f1]",
-      value: totalCertificates,
+      value: counts.certificates,
       label: "Certificates",
       description: "Professional skills validated",
       animation: "fade-up",
@@ -175,16 +209,16 @@ const AboutPage = () => {
     {
       icon: Globe,
       color: "from-[#6366f1] to-[#a855f7]",
-      value: YearExperience,
+      value: counts.yearsExperience,
       label: "Years of Experience",
       description: "Continuous learning journey",
       animation: "fade-left",
     },
-  ], [totalProjects, totalCertificates, YearExperience]);
+  ], [counts.projects, counts.certificates, counts.yearsExperience]);
 
   return (
     <div
-      className="h-auto pb-[10%] text-white overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] mt-10 sm-mt-0" 
+      className="h-auto pb-[10%] text-white overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] mt-10 sm:mt-0 scroll-mt-16" 
       id="About"
      itemScope
   itemType="https://schema.org/Person"
@@ -196,7 +230,7 @@ const AboutPage = () => {
         <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div className="space-y-6 text-center lg:text-left">
             <h2 
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold"
               data-aos="fade-right"
               data-aos-duration="1000"
             >
@@ -209,18 +243,22 @@ const AboutPage = () => {
                 data-aos-duration="1300"
                 itemProp="name"
               >
-                Eki Zulfar Rachman
+                Niko Dwicahyo Widiyanto
               </span>
             </h2>
             
             <p 
-              className="text-base sm:text-lg lg:text-xl text-gray-400 leading-relaxed text-justify pb-4 sm:pb-0"
+              className="text-xs sm:text-sm lg:text-base text-gray-400 leading-relaxed text-justify pb-4 sm:pb-0"
               data-aos="fade-right"
               data-aos-duration="1500"
             >
-        Saya adalah mahasiswa Teknik Informatika yang berfokus pada pengembangan Front-End. 
-Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan.
-                  </p>
+              I am an Informatic Engineering student at Gunadarma University with a strong passion for system
+              engineer, artificial intelligence, software engineer, and IT infrastructure. I have hands-on experience
+              in software installation, hardware troubleshooting, database and server administration, and network
+              configuration (LAN/WLAN). Proficient in both Windows and Linux environments with programming
+              abilities in Python, Golang, PHP, Javacript, and SQL. Highly motivated to learn, grow, and contribute
+              effectively within a dynamic and professional IT environment.
+            </p>
 
                {/* Quote Section */}
       <div 
@@ -245,15 +283,7 @@ Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupay
       </div>
 
             <div className="flex flex-col lg:flex-row items-center lg:items-start gap-4 lg:gap-4 lg:px-0 w-full">
-              <a href="https://drive.google.com/drive/folders/1BOm51Grsabb3zj6Xk27K-iRwI1zITcpo" className="w-full lg:w-auto">
-              <button 
-                data-aos="fade-up"
-                data-aos-duration="800"
-                className="w-full lg:w-auto sm:px-6 py-2 sm:py-3 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white font-medium transition-all duration-300 hover:scale-105 flex items-center justify-center lg:justify-start gap-2 shadow-lg hover:shadow-xl "
-              >
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" /> Download CV
-              </button>
-              </a>
+              <CVViewerButton />
               <a href="#Portofolio" className="w-full lg:w-auto">
               <button 
                 data-aos="fade-up"
@@ -277,27 +307,8 @@ Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupay
           </div>
         </a>
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes spin-slower {
-          to { transform: rotate(360deg); }
-        }
-        .animate-bounce-slow {
-          animation: bounce 3s infinite;
-        }
-        .animate-pulse-slow {
-          animation: pulse 3s infinite;
-        }
-        .animate-spin-slower {
-          animation: spin-slower 8s linear infinite;
-        }
-      `}</style>
     </div>
   );
 };
 
-export default memo(AboutPage);
+export default AboutPage;

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from "../supabase";
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, LogIn, Sparkles, Eye, EyeOff } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -14,14 +15,18 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { alert(error.message); setLoading(false); return }
+    if (error) {
+      Swal.fire({ icon: 'error', title: 'Login Failed', text: error.message, confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
+      setLoading(false);
+      return
+    }
 
     const { data: profile } = await supabase
       .from('profiles').select('role').eq('id', data.user.id).single()
 
     if (profile?.role !== 'admin') {
-      alert('Access denied')
       await supabase.auth.signOut()
+      Swal.fire({ icon: 'error', title: 'Access Denied', text: 'You do not have admin access.', confirmButtonColor: '#6366f1', background: '#030014', color: '#fff' });
       setLoading(false)
       return
     }
