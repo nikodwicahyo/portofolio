@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-import { supabase } from "../supabase"; 
+import { supabase } from "../supabase";
 
 import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
@@ -14,71 +14,28 @@ import "aos/dist/aos.css";
 import Certificate from "../components/Certificate";
 import { Code, Award, Boxes, Briefcase, Calendar, MapPin } from "lucide-react";
 
+const shimmer = "relative overflow-hidden bg-white/[0.06] before:absolute before:inset-0 before:bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.08)_50%,transparent_100%)] before:bg-[length:200%_100%] before:animate-shimmer";
+
 const ShimmerBlock = ({ className = "" }) => (
-  <div className={`relative overflow-hidden bg-white/[0.06] ${className}`}>
-    <div
-      className="absolute inset-0"
-      style={{
-        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
-        backgroundSize: "200% 100%",
-        animation: "shimmer 1.5s infinite",
-      }}
-    />
-  </div>
+  <div className={`${shimmer} ${className}`} />
 );
 
 const ToggleButton = ({ onClick, isShowingMore }) => (
   <button
     onClick={onClick}
-    className="
-      px-3 py-1.5
-      text-slate-300 
-      hover:text-white 
-      text-sm 
-      font-medium 
-      transition-all 
-      duration-300 
-      ease-in-out
-      flex 
-      items-center 
-      gap-2
-      bg-white/5 
-      hover:bg-white/10
-      rounded-md
-      border 
-      border-white/10
-      hover:border-white/20
-      backdrop-blur-sm
-      group
-      relative
-      overflow-hidden
-    "
+    className="px-3 py-1.5 text-slate-300 hover:text-white text-sm font-medium transition-all duration-300 ease-in-out flex items-center gap-2 bg-white/5 hover:bg-white/10 rounded-md border border-white/10 hover:border-white/20 backdrop-blur-sm group relative overflow-hidden"
   >
     <span className="relative z-10 flex items-center gap-2">
       {isShowingMore ? "See Less" : "See More"}
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={`
-          transition-transform 
-          duration-300 
-          ${isShowingMore ? "group-hover:-translate-y-0.5" : "group-hover:translate-y-0.5"}
-        `}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        className={`transition-transform duration-300 ${isShowingMore ? "group-hover:-translate-y-0.5" : "group-hover:translate-y-0.5"}`}
       >
-        <polyline points={isShowingMore ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}></polyline>
+        <polyline points={isShowingMore ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
       </svg>
     </span>
-    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-500/50 transition-all duration-300 group-hover:w-full"></span>
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-500/50 transition-all duration-300 group-hover:w-full" />
   </button>
 );
-
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -87,7 +44,7 @@ function TabPanel({ children, value, index, ...other }) {
       hidden={value !== index}
       id={`full-width-tabpanel-${index}`}
       aria-labelledby={`full-width-tab-${index}`}
-      className="p-2 sm:p-6"
+      className="px-1 sm:p-6"
       {...other}
     >
       {value === index && children}
@@ -108,69 +65,98 @@ function a11yProps(index) {
   };
 }
 
+const ExperienceCard = ({ exp, onSelect }) => {
+  const fmt = (d) => {
+    if (!d) return "Present";
+    return new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  };
+  return (
+    <div className="relative group cursor-pointer" onClick={() => onSelect(exp)}>
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10 group-hover:opacity-25 transition duration-500" />
+      <div className="relative bg-white/5 backdrop-blur-xl border border-white/12 rounded-2xl p-4 sm:p-5">
+        <div className="flex items-start gap-3 mb-3">
+          {exp.logo_url ? (
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-white/5 shrink-0">
+              <img src={exp.logo_url} alt={exp.company} className="w-full h-full object-cover" loading="lazy" />
+            </div>
+          ) : (
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5 text-indigo-400" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-white text-sm sm:text-base mb-0.5 leading-tight">{exp.position}</h3>
+            <p className="text-white/95 text-xs sm:text-sm">{exp.company}</p>
+          </div>
+        </div>
+        <div className="space-y-1 mb-2 sm:mb-3">
+          <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+            <Calendar className="w-3 h-3 shrink-0" />
+            <span className="truncate">{fmt(exp.start_date)} - {fmt(exp.end_date)}</span>
+          </div>
+          {exp.location && (
+            <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+              <MapPin className="w-3 h-3 shrink-0" />
+              <span className="truncate">{exp.location}</span>
+            </div>
+          )}
+        </div>
+        {exp.description && (
+          <p className="text-gray-400 text-xs sm:text-sm leading-relaxed line-clamp-2 sm:line-clamp-3">{exp.description}</p>
+        )}
+        <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/8">
+          <p className="text-indigo-400/70 text-xs font-medium flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            View details
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ExperienceModal = ({ experience, onClose }) => {
   if (!experience) return null;
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "Present";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const fmt = (d) => {
+    if (!d) return "Present";
+    return new Date(d).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
-
-  const startDate = formatDate(experience.start_date);
-  const endDate = formatDate(experience.end_date);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative z-10 w-full max-w-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative z-10 w-full max-w-2xl mx-auto" onClick={e => e.stopPropagation()}>
         <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-30 pointer-events-none" />
         <div className="relative bg-[#0a0a1a] border border-white/12 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
-            <h2 className="text-lg font-semibold text-white">Experience Details</h2>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-white/8">
+            <h2 className="text-base sm:text-lg font-semibold text-white">Experience Details</h2>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
-
-          <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-            <div className="flex items-start gap-4">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[70vh] overflow-y-auto">
+            <div className="flex items-start gap-3 sm:gap-4">
               {experience.logo_url ? (
-                <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 shrink-0">
-                  <img
-                    src={experience.logo_url}
-                    alt={experience.company}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-white/5 shrink-0">
+                  <img src={experience.logo_url} alt={experience.company} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shrink-0">
-                  <Briefcase className="w-7 h-7 text-indigo-400" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-400" />
                 </div>
               )}
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-1">
-                  {experience.position}
-                </h3>
-                <p className="text-white/95 text-base">
-                  {experience.company}
-                </p>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-bold text-white mb-1 break-words">{experience.position}</h3>
+                <p className="text-white/95 text-sm sm:text-base">{experience.company}</p>
               </div>
             </div>
-
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-gray-300 text-sm">
                 <Calendar className="w-4 h-4 shrink-0 text-indigo-400" />
-                <span>{startDate} - {endDate}</span>
+                <span>{fmt(experience.start_date)} - {fmt(experience.end_date)}</span>
               </div>
               {experience.location && (
                 <div className="flex items-center gap-2 text-gray-300 text-sm">
@@ -179,13 +165,10 @@ const ExperienceModal = ({ experience, onClose }) => {
                 </div>
               )}
             </div>
-
             {experience.description && (
               <div>
-                <h4 className="text-sm font-semibold text-white mb-2 uppercase tracking-wider">Description</h4>
-                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                  {experience.description}
-                </p>
+                <h4 className="text-xs sm:text-sm font-semibold text-white mb-2 uppercase tracking-wider">Description</h4>
+                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{experience.description}</p>
               </div>
             )}
           </div>
@@ -195,18 +178,88 @@ const ExperienceModal = ({ experience, onClose }) => {
   );
 };
 
+const CardGridLoading = ({ count, cols }) => {
+  const shimmerCards = Array.from({ length: count });
+  const shimmerItem = (i) => (
+    <div key={i} className="relative group">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
+      <div className="relative bg-white/5 border border-white/12 rounded-2xl overflow-hidden">
+        <ShimmerBlock className="w-full aspect-[16/11.5] rounded-none" />
+      </div>
+    </div>
+  );
+  if (cols <= 2) return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">{shimmerCards.map((_, i) => shimmerItem(i))}</div>;
+  return <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">{shimmerCards.map((_, i) => shimmerItem(i))}</div>;
+};
+
+const ExpShimmer = ({ count = 3 }) => (
+  <div className="space-y-6 sm:space-y-8">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="relative pl-10 sm:pl-14">
+        <div className="absolute left-4 sm:left-6 top-5 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/10 ring-4 ring-[#030014]" />
+        <div className="relative bg-white/5 border border-white/12 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <ShimmerBlock className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl shrink-0" />
+            <div className="flex-1 space-y-2">
+              <ShimmerBlock className="h-4 w-3/4 rounded-lg" />
+              <ShimmerBlock className="h-3 w-1/2 rounded-lg" />
+            </div>
+          </div>
+          <ShimmerBlock className="h-3 w-1/3 rounded-lg" />
+          <ShimmerBlock className="h-3 w-full rounded-lg" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const ExperienceTimeline = ({ experiences, onSelect }) => (
+  <div className="relative">
+    <div className="absolute left-4 sm:left-6 md:left-1/2 top-0 w-0.5 h-full bg-gradient-to-b from-[#6366f1] via-[#a855f7] to-[#6366f1] opacity-60 md:-translate-x-1/2" />
+    <div className="space-y-6 sm:space-y-8 md:space-y-12">
+      {experiences.map((exp, index) => {
+        const isEven = index % 2 === 0;
+        return (
+          <div key={exp.id || index}
+            data-aos={window.innerWidth < 768 ? "fade-up" : isEven ? "fade-right" : "fade-left"}
+            data-aos-duration="1000"
+            className="relative pl-10 sm:pl-14 md:pl-0"
+          >
+            <div className="absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] ring-4 ring-[#030014] shadow-lg shadow-indigo-500/30 md:-translate-x-1/2 z-10" />
+
+            <div className="md:hidden">
+              <ExperienceCard exp={exp} onSelect={onSelect} />
+            </div>
+
+            <div className="hidden md:flex items-start">
+              <div className={`w-5/12 ${isEven ? '' : 'invisible'}`}>
+                {isEven && <ExperienceCard exp={exp} onSelect={onSelect} />}
+              </div>
+              <div className="w-2/12 shrink-0" />
+              <div className={`w-5/12 ${isEven ? 'invisible' : ''}`}>
+                {!isEven && <ExperienceCard exp={exp} onSelect={onSelect} />}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
 export default function FullWidthTabs() {
   const [value, setValue] = useState(0);
   const [projects, setProjects] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [techStacks, setTechStacks] = useState([]);
+  const [projLoading, setProjLoading] = useState(true);
+  const [certLoading, setCertLoading] = useState(true);
+  const [expLoading, setExpLoading] = useState(true);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllCertificates, setShowAllCertificates] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState(null);
-  const [certLoading, setCertLoading] = useState(false);
   const [techLoading, setTechLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
 
@@ -217,531 +270,239 @@ export default function FullWidthTabs() {
   }, []);
 
   useEffect(() => {
-    AOS.init({
-      once: false,
-    });
+    AOS.init({ once: false });
   }, []);
 
-
-  const fetchData = useCallback(async (retries = 2) => {
-    try {
-      const fetchWithRetry = async (fn, retriesLeft = retries) => {
-        try {
-          const response = await fn();
-          if (response.error) throw response.error;
-          return response.data || [];
-        } catch (error) {
-          if (retriesLeft > 0 && error.message.includes('timeout')) {
-            console.warn(`Retrying fetch... (${retriesLeft} attempts left)`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return fetchWithRetry(fn, retriesLeft - 1);
-          }
-          throw error;
-        }
-      };
-
-      const [projectData, certificateData, experienceData] = await Promise.all([
-        fetchWithRetry(() => supabase.from("projects").select("*").order('id', { ascending: false })),
-        fetchWithRetry(() => supabase.from("certificates").select("*").order('id', { ascending: false })),
-        fetchWithRetry(() => supabase.from("experiences").select("*").order('start_date', { ascending: false })),
-      ]);
-
-      setProjects(projectData);
-      setCertificates(certificateData);
-      setExperiences(experienceData);
-
+  const fetchAll = useCallback(async () => {
+    const fetchOne = async (table, setData, setLoadDone, order) => {
       try {
-        localStorage.setItem("projects", JSON.stringify(projectData));
-        localStorage.setItem("certificates", JSON.stringify(certificateData));
-        localStorage.setItem("experiences", JSON.stringify(experienceData));
-      } catch { /* storage full - will fetch from API */ }
-
-      try {
-        const techStackData = await fetchWithRetry(() => supabase.from("tech_stacks").select("*").order('display_order', { ascending: true }));
-        setTechStacks(techStackData);
-      } catch (error) {
-        console.error("Error fetching tech stacks:", error.message);
-      } finally {
-        setTechLoading(false);
+        const { data, error } = await supabase.from(table).select("*").order(order.field, { ascending: order.asc });
+        if (error) throw error;
+        if (data) { setData(data); setLoadDone(false); localStorage.setItem(table, JSON.stringify(data)); }
+      } catch (e) {
+        console.error(`${table} fetch error:`, e.message);
+        setLoadDone(false);
       }
-    } catch (error) {
-      console.error("Error fetching data from Supabase:", error.message);
-    }
+    };
+
+    await Promise.all([
+      fetchOne("projects", setProjects, setProjLoading, { field: 'id', asc: false }),
+      fetchOne("certificates", setCertificates, setCertLoading, { field: 'id', asc: false }),
+      fetchOne("experiences", setExperiences, setExpLoading, { field: 'start_date', asc: false }),
+      fetchOne("tech_stacks", setTechStacks, setTechLoading, { field: 'display_order', asc: true }),
+    ]);
   }, []);
-
-
 
   useEffect(() => {
-    let isMounted = true;
-    
-    const loadData = async () => {
-      const cachedProjects = localStorage.getItem('projects');
-      const cachedCertificates = localStorage.getItem('certificates');
-      const cachedExperiences = localStorage.getItem('experiences');
-
-      if (cachedProjects && isMounted) {
-        setProjects(JSON.parse(cachedProjects));
-      }
-      if (cachedCertificates && isMounted) {
-        setCertificates(JSON.parse(cachedCertificates));
-      }
-      if (cachedExperiences && isMounted) {
-        setExperiences(JSON.parse(cachedExperiences));
-      }
-      await fetchData();
-      if (isMounted) {
-        setHasLoadedOnce(true);
-      }
+    let mounted = true;
+    const loadCache = (key, setData, setLoadDone) => {
+      const raw = localStorage.getItem(key);
+      if (raw) { setData(JSON.parse(raw)); setLoadDone(false); }
     };
+    loadCache('projects', setProjects, setProjLoading);
+    loadCache('certificates', setCertificates, setCertLoading);
+    loadCache('experiences', setExperiences, setExpLoading);
+    if (mounted) fetchAll();
+    return () => { mounted = false; };
+  }, [fetchAll]);
 
-    loadData();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [fetchData]);
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-    if (newValue === 2) {
-      setCertLoading(true);
-      const duration = hasLoadedOnce ? (certificates.length === 0 ? 1500 : 500) : 600;
-      setTimeout(() => setCertLoading(false), duration);
-    }
-  };
+  const handleChange = (event, newValue) => setValue(newValue);
 
   const toggleShowMore = useCallback((type) => {
-    if (type === 'projects') {
-      setShowAllProjects(prev => !prev);
-    } else {
-      setShowAllCertificates(prev => !prev);
-    }
+    if (type === 'projects') setShowAllProjects(p => !p);
+    else setShowAllCertificates(p => !p);
   }, []);
 
   const displayedProjects = showAllProjects ? projects : projects.slice(0, initialItems);
   const displayedCertificates = showAllCertificates ? certificates : certificates.slice(0, initialItems);
 
-  // Sisa dari komponen (return statement) tidak ada perubahan
+  const emptyState = (Icon, msg) => (
+    <div className="text-center py-12 sm:py-16">
+      <Icon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-700 mx-auto mb-4" />
+      <p className="text-gray-500 text-sm">{msg}</p>
+    </div>
+  );
+
+  const ExpSection = () => {
+    if (expLoading && experiences.length === 0) return <ExpShimmer />;
+    if (!expLoading && experiences.length === 0) return emptyState(Briefcase, "No experiences to display yet");
+    return <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />;
+  };
+
+  const ProjectSection = () => {
+    if (projLoading && projects.length === 0) return <CardGridLoading count={initialItems} cols={2} />;
+    if (!projLoading && projects.length === 0) return emptyState(Code, "No projects to display yet");
+    return (
+      <>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
+          {displayedProjects.map((project, index) => (
+            <div key={project.id || index}
+              data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
+              data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+            >
+              <CardProject Img={project.img} Title={project.title} Description={project.description} Link={project.link} id={project.id} />
+            </div>
+          ))}
+        </div>
+        {projects.length > initialItems && (
+          <div className="mt-6 w-full flex justify-center sm:justify-start">
+            <ToggleButton onClick={() => toggleShowMore('projects')} isShowingMore={showAllProjects} />
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const CertSection = () => {
+    if (certLoading && certificates.length === 0) return <CardGridLoading count={initialItems} cols={3} />;
+    if (!certLoading && certificates.length === 0) return emptyState(Award, "No certificates to display yet");
+    return (
+      <>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+          {displayedCertificates.map((cert, index) => (
+            <div key={cert.id || index}
+              data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
+              data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+            >
+              <Certificate ImgSertif={cert.img} />
+            </div>
+          ))}
+        </div>
+        {certificates.length > initialItems && (
+          <div className="mt-6 w-full flex justify-center sm:justify-start">
+            <ToggleButton onClick={() => toggleShowMore('certificates')} isShowingMore={showAllCertificates} />
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const TechSection = () => {
+    if (techLoading) return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 py-8">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
+            <div className="relative bg-white/5 border border-white/12 rounded-2xl p-4 sm:p-6 flex flex-col items-center gap-3">
+              <ShimmerBlock className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl" />
+              <ShimmerBlock className="h-4 w-16 sm:w-20 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+    if (techStacks.length === 0) return emptyState(Boxes, "No tech stacks to display yet");
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8">
+        {techStacks.map((stack, index) => (
+          <div key={stack.id}
+            data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
+            data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+          >
+            <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="md:px-[10%] px-[5%] w-full sm:mt-0 mt-[3rem] bg-[#030014] overflow-hidden scroll-mt-16" id="Portofolio">
-      {/* Header section - unchanged */}
-      <div className="text-center pb-10" data-aos="fade-up" data-aos-duration="1000">
-        <h2 className="inline-block text-3xl md:text-5xl font-bold text-center mx-auto text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]">
-          <span style={{
-            color: '#6366f1',
-            backgroundImage: 'linear-gradient(45deg, #6366f1 10%, #a855f7 93%)',
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            Portfolio Showcase
-          </span>
+      <div className="text-center pb-6 sm:pb-10" data-aos="fade-up" data-aos-duration="1000">
+        <h2 className="inline-block text-2xl sm:text-3xl md:text-5xl font-bold text-center mx-auto text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]">
+          Portfolio Showcase
         </h2>
-        <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base mt-2">
-          Explore my journey through work experiences, projects, certifications, and technical expertise. 
-          Each section represents a milestone in my continuous learning path.
+        <p className="text-slate-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base mt-2 px-2">
+          Explore my journey through work experiences, projects, certifications, and technical expertise.
         </p>
       </div>
 
       <Box sx={{ width: "100%" }}>
-        {/* AppBar and Tabs section - unchanged */}
-        <AppBar
-          position="static"
-          elevation={0}
+        <AppBar position="static" elevation={0} className="!rounded-xl sm:!rounded-2xl"
           sx={{
             bgcolor: "transparent",
             border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "20px",
-            position: "relative",
-            overflow: "hidden",
             "&::before": {
-              content: '""',
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              content: '""', position: "absolute", inset: 0,
               background: "linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, rgba(59, 130, 246, 0.03) 100%)",
-              backdropFilter: "blur(10px)",
-              zIndex: 0,
+              backdropFilter: "blur(10px)", zIndex: 0,
             },
           }}
-          className="md:px-4"
         >
-          {/* Tabs remain unchanged */}
           <Tabs
-            value={value}
-            onChange={handleChange}
-            textColor="secondary"
-            indicatorColor="secondary"
-            variant="fullWidth"
+            value={value} onChange={handleChange}
+            textColor="secondary" indicatorColor="secondary"
+            variant={isMobile ? "scrollable" : "fullWidth"}
+            scrollButtons={false}
             sx={{
-              minHeight: { xs: "56px", sm: "70px" },
+              minHeight: { xs: "48px", sm: "70px" },
+              "& .MuiTabs-flexContainer": { gap: { xs: "1px", sm: "4px" } },
               "& .MuiTab-root": {
-                fontSize: { xs: "0.7rem", sm: "0.9rem", md: "1rem" },
+                fontSize: { xs: "0.65rem", sm: "0.9rem", md: "1rem" },
                 fontWeight: "600",
                 color: "#94a3b8",
                 textTransform: "none",
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                padding: { xs: "8px 2px", sm: "12px 4px", md: "20px 0" },
+                padding: { xs: "6px 4px", sm: "12px 4px", md: "20px 0" },
                 zIndex: 1,
-                margin: { xs: "4px 2px", sm: "6px 4px", md: "8px" },
+                margin: { xs: "2px 1px", sm: "6px 4px" },
                 borderRadius: "12px",
+                minHeight: { xs: "44px", sm: "70px" },
+                minWidth: { xs: "auto", sm: "auto" },
+                flex: { xs: "1 1 auto", sm: "1 1 0" },
                 "&:hover": {
                   color: "#ffffff",
                   backgroundColor: "rgba(139, 92, 246, 0.1)",
-                  transform: "translateY(-2px)",
-                  "& .lucide": {
-                    transform: "scale(1.1) rotate(5deg)",
-                  },
                 },
                 "&.Mui-selected": {
                   color: "#fff",
                   background: "linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2))",
                   boxShadow: "0 4px 15px -3px rgba(139, 92, 246, 0.2)",
-                  "& .lucide": {
-                    color: "#a78bfa",
-                  },
+                  "& .lucide": { color: "#a78bfa" },
                 },
               },
-              "& .MuiTabs-indicator": {
-                height: 0,
-              },
-              "& .MuiTabs-flexContainer": {
-                gap: { xs: "2px", sm: "4px", md: "8px" },
-              },
+              "& .MuiTabs-indicator": { height: 0 },
             }}
           >
-            <Tab
-              icon={<Briefcase className="mb-1 sm:mb-2 w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300" />}
-              label="Experiences"
-              {...a11yProps(0)}
-            />
-            <Tab
-              icon={<Code className="mb-1 sm:mb-2 w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300" />}
-              label="Projects"
-              {...a11yProps(1)}
-            />
-            <Tab
-              icon={<Award className="mb-1 sm:mb-2 w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300" />}
-              label="Certificates"
-              {...a11yProps(2)}
-            />
-            <Tab
-              icon={<Boxes className="mb-1 sm:mb-2 w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300" />}
-              label="Tech Stack"
-              {...a11yProps(3)}
-            />
+            {[
+              { icon: Briefcase, label: "Experiences" },
+              { icon: Code, label: "Projects" },
+              { icon: Award, label: "Certificates" },
+              { icon: Boxes, label: "Tech Stack" },
+            ].map((tab, i) => (
+              <Tab key={i}
+                icon={<tab.icon className="mb-0.5 sm:mb-2 w-3.5 h-3.5 sm:w-5 sm:h-5 transition-all duration-300" />}
+                label={<span className="text-[0.6rem] leading-tight sm:text-sm md:text-base">{tab.label}</span>}
+                {...a11yProps(i)}
+              />
+            ))}
           </Tabs>
         </AppBar>
 
         <TabPanel value={value} index={0}>
-            <div className="max-w-6xl mx-auto px-4 py-4">
-              {experiences.length === 0 ? (
-                <div className="text-center py-16">
-                  <Briefcase className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                  <p className="text-gray-500 text-sm">
-                    No experiences to display yet
-                  </p>
-                </div>
-              ) : (
-                <div className="relative">
-                  {/* Center timeline line - desktop */}
-                  <div className="hidden md:block absolute left-1/2 w-0.5 h-full bg-gradient-to-b from-[#6366f1] via-[#a855f7] to-[#6366f1] opacity-60" />
-                  {/* Left timeline line - mobile */}
-                  <div className="md:hidden absolute left-6 top-0 w-0.5 h-full bg-gradient-to-b from-[#6366f1] via-[#a855f7] to-[#6366f1] opacity-60" />
-
-                  <div className="space-y-8 md:space-y-12">
-                    {experiences.map((exp, index) => {
-                      const formatDate = (dateStr) => {
-                        if (!dateStr) return "Present";
-                        const date = new Date(dateStr);
-                        return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-                      };
-
-                      const startDate = formatDate(exp.start_date);
-                      const endDate = formatDate(exp.end_date);
-                      const isEven = index % 2 === 0;
-
-                      const ExperienceCard = ({ exp }) => (
-                        <div
-                          className="relative group cursor-pointer"
-                          onClick={() => setSelectedExperience(exp)}
-                        >
-                          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10 group-hover:opacity-25 transition duration-500" />
-                          <div className="relative bg-white/5 backdrop-blur-xl border border-white/12 rounded-2xl p-5">
-                            <div className="flex items-start gap-3 mb-3">
-                              {exp.logo_url ? (
-                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 shrink-0">
-                                  <img
-                                    src={exp.logo_url}
-                                    alt={exp.company}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shrink-0">
-                                  <Briefcase className="w-5 h-5 text-indigo-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white text-base mb-0.5">
-                                  {exp.position}
-                                </h3>
-                                <p className="text-white/95 text-sm">
-                                  {exp.company}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-1.5 mb-3">
-                              <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                <span>{startDate} - {endDate}</span>
-                              </div>
-                              {exp.location && (
-                                <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                                  <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="truncate">{exp.location}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {exp.description && (
-                              <p className="text-gray-400 text-sm leading-relaxed line-clamp-3">
-                                {exp.description}
-                              </p>
-                            )}
-
-                            <div className="mt-3 pt-3 border-t border-white/8">
-                              <p className="text-indigo-400/70 text-xs font-medium flex items-center gap-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-                                </svg>
-                                Click to view details
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-
-                      return (
-                        <div
-                          key={exp.id || index}
-                          data-aos={window.innerWidth < 768 ? "fade-up" : isEven ? "fade-right" : "fade-left"}
-                          data-aos-duration="1000"
-                          className="relative"
-                        >
-                          {/* Timeline dot - desktop center */}
-                          <div className="hidden md:block absolute left-1/2 top-6 transform -translate-x-1/2 z-10">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] ring-4 ring-[#030014] shadow-lg shadow-indigo-500/30" />
-                          </div>
-                          
-                          {/* Timeline dot - mobile left */}
-                          <div className="md:hidden absolute left-6 top-6 transform -translate-x-1/2 z-10">
-                            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] ring-4 ring-[#030014] shadow-lg shadow-indigo-500/30" />
-                          </div>
-
-                          {/* Desktop layout - alternating */}
-                          <div className="hidden md:flex items-start gap-8">
-                            {/* Left side card */}
-                            <div className={`w-5/12 ${isEven ? '' : 'invisible pointer-events-none'}`}>
-                              {isEven && <ExperienceCard exp={exp} />}
-                            </div>
-
-                            {/* Spacer for center */}
-                            <div className="w-2/12" />
-
-                            {/* Right side card */}
-                            <div className={`w-5/12 ${!isEven ? '' : 'invisible pointer-events-none'}`}>
-                              {!isEven && <ExperienceCard exp={exp} />}
-                            </div>
-                          </div>
-
-                          {/* Mobile layout - single column */}
-                          <div className="md:hidden ml-12">
-                            <div className="relative group cursor-pointer" onClick={() => setSelectedExperience(exp)}>
-                              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10 group-hover:opacity-25 transition duration-500" />
-                              <div className="relative bg-white/5 backdrop-blur-xl border border-white/12 rounded-2xl p-4">
-                                <div className="flex items-start gap-3 mb-3">
-                                  {exp.logo_url ? (
-                                    <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                                      <img
-                                        src={exp.logo_url}
-                                        alt={exp.company}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shrink-0">
-                                      <Briefcase className="w-5 h-5 text-indigo-400" />
-                                    </div>
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-white text-sm mb-0.5">
-                                      {exp.position}
-                                    </h3>
-                                    <p className="text-white/95 text-xs">
-                                      {exp.company}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1 mb-2">
-                                  <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{startDate} - {endDate}</span>
-                                  </div>
-                                  {exp.location && (
-                                    <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                                      <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                      <span className="truncate">{exp.location}</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {exp.description && (
-                                  <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">
-                                    {exp.description}
-                                  </p>
-                                )}
-
-                                <div className="mt-2 pt-2 border-t border-white/8">
-                                  <p className="text-indigo-400/70 text-xs font-medium flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-                                    </svg>
-                                    Tap to view details
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="max-w-6xl mx-auto px-0 sm:px-4 py-2 sm:py-4">
+            <ExpSection />
             {selectedExperience && (
-              <ExperienceModal
-                experience={selectedExperience}
-                onClose={() => setSelectedExperience(null)}
-              />
+              <ExperienceModal experience={selectedExperience} onClose={() => setSelectedExperience(null)} />
             )}
-          </TabPanel>
+          </div>
+        </TabPanel>
 
-          <TabPanel value={value} index={1}>
-            <div className="container mx-auto flex justify-center items-center overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
-                {displayedProjects.map((project, index) => (
-                  <div
-                    key={project.id || index}
-                    data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-                    data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-                  >
-                    <CardProject
-                      Img={project.img}
-                      Title={project.title}
-                      Description={project.description}
-                      Link={project.link}
-                      id={project.id}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-            {projects.length > initialItems && (
-              <div className="mt-6 w-full flex justify-start">
-                <ToggleButton
-                  onClick={() => toggleShowMore('projects')}
-                  isShowingMore={showAllProjects}
-                />
-              </div>
-            )}
-          </TabPanel>
+        <TabPanel value={value} index={1}>
+          <div className="container mx-auto flex justify-center items-center overflow-hidden">
+            <ProjectSection />
+          </div>
+        </TabPanel>
 
-          <TabPanel value={value} index={2}>
-            {certLoading || (value === 2 && !hasLoadedOnce && certificates.length === 0) ? (
-              <div className="w-full py-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 md:gap-5 gap-4">
-                  {Array.from({ length: initialItems }).map((_, i) => (
-                    <div key={i} className="relative group">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
-                      <div className="relative bg-white/5 border border-white/12 rounded-2xl overflow-hidden">
-                        <ShimmerBlock className="w-full aspect-[16/11.5] rounded-none" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : certificates.length === 0 ? (
-              <div className="text-center py-16">
-                <Award className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">No certificates to display yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="container mx-auto flex justify-center items-center overflow-hidden">
-                  <div className="grid grid-cols-1 md:grid-cols-3 md:gap-5 gap-4">
-                    {displayedCertificates.map((certificate, index) => (
-                      <div
-                        key={certificate.id || index}
-                        data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-                        data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-                      >
-                        <Certificate ImgSertif={certificate.img} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {certificates.length > initialItems && (
-                  <div className="mt-6 w-full flex justify-start">
-                    <ToggleButton
-                      onClick={() => toggleShowMore('certificates')}
-                      isShowingMore={showAllCertificates}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </TabPanel>
+        <TabPanel value={value} index={2}>
+          <CertSection />
+        </TabPanel>
 
-          <TabPanel value={value} index={3}>
-            <div className="container mx-auto flex justify-center items-center overflow-hidden pb-[5%]">
-              {techLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 lg:gap-8 gap-5 py-8">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="relative group">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
-                      <div className="relative bg-white/5 border border-white/12 rounded-2xl p-6 flex flex-col items-center gap-3">
-                        <ShimmerBlock className="w-16 h-16 rounded-2xl" />
-                        <ShimmerBlock className="h-4 w-20 rounded-lg" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : techStacks.length === 0 ? (
-                <div className="text-center py-16">
-                  <Boxes className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                  <p className="text-gray-500 text-sm">No tech stacks to display yet</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 lg:gap-8 gap-5">
-                  {techStacks.map((stack, index) => (
-                    <div
-                      key={stack.id}
-                      data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-                      data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-                    >
-                      <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabPanel>
+        <TabPanel value={value} index={3}>
+          <div className="container mx-auto flex justify-center items-center overflow-hidden pb-[5%]">
+            <TechSection />
+          </div>
+        </TabPanel>
       </Box>
     </div>
   );
