@@ -12,35 +12,21 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "@headlessui/react": "^2.2.0",
-    "@heroicons/react": "^1.0.6",
-    "@lottiefiles/dotlottie-react": "^0.11.0",
     "@mui/icons-material": "^6.1.6",
     "@mui/material": "^6.1.6",
-    "@mui/styled-engine-sc": "^6.1.6",
-    "@react-spring/web": "^9.7.5",
 
     "@supabase/supabase-js": "^2.49.9",
     "aos": "^2.3.4",
     "axios": "^1.10.0",
-    "clsx": "^2.1.1",
-    "embla-carousel-react": "^8.3.1",
     "framer-motion": "^11.15.0",
-    "gsap": "^3.12.5",
-
     "lucide-react": "^0.454.0",
     "pdfjs-dist": "^5.7.284",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.76.0",
-    "react-intersection-observer": "^9.13.1",
     "react-router-dom": "^6.28.0",
-
-    "styled-components": "^6.1.13",
-    "sweetalert2": "^11.15.0",
-    "tailwind-merge": "^2.5.5",
-    "typewriter-effect": "^2.21.0"
+    "sweetalert2": "^11.15.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
+import LazyImage from "./LazyImage";
 
-const CardProject = ({ Img, Title, Description, Link: ProjectLink, id }) => {
-  const [imgLoaded, setImgLoaded] = useState(false);
-
+const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) => {
   return (
     <div className="group relative w-full">
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-lg border border-white/10 shadow-2xl transition-all duration-300 hover:shadow-purple-500/20">
@@ -13,15 +12,10 @@ const CardProject = ({ Img, Title, Description, Link: ProjectLink, id }) => {
 
         <div className="relative p-4 sm:p-5 z-10">
           <div className="relative overflow-hidden rounded-lg">
-            {!imgLoaded && (
-              <div className="w-full h-full absolute inset-0 bg-white/5 animate-pulse rounded-lg" />
-            )}
-            <img
+            <LazyImage
               src={Img}
               alt={Title}
-              loading="lazy"
-              onLoad={() => setImgLoaded(true)}
-              className={`w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105 transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className="w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105"
             />
           </div>
 
@@ -66,6 +60,6 @@ const CardProject = ({ Img, Title, Description, Link: ProjectLink, id }) => {
       </div>
     </div>
   );
-};
+});
 
 export default CardProject;

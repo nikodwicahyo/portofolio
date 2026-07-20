@@ -1,12 +1,14 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import React, { useState, lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import "./index.css";
 import Navbar from "./components/Navbar";
 import Home from "./Pages/Home";
 import About from "./Pages/About";
 import AnimatedBackground from "./components/Background";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Footer from "./components/Footer";
 
 import Login from "./Pages/Login";
@@ -19,6 +21,18 @@ const ContactPage = lazy(() => import("./Pages/Contact"));
 const ProjectDetails = lazy(() => import("./components/ProjectDetail"));
 const WelcomeScreen = lazy(() => import("./Pages/WelcomeScreen"));
 const NotFoundPage = lazy(() => import("./Pages/404"));
+
+const pageVariants = {
+  initial: { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, y: -16, transition: { duration: 0.2, ease: "easeIn" } },
+};
+
+const PageTransition = ({ children }) => (
+  <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+    {children}
+  </motion.div>
+);
 
 const LandingPage = ({ showWelcome, setShowWelcome }) => {
   return (
@@ -60,6 +74,14 @@ const ProjectPageLayout = () => (
 
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
+  const location = useLocation();
+
+  useEffect(() => {
+    AOS.init({ once: false, offset: 10 });
+    const onResize = () => AOS.refresh();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -67,48 +89,26 @@ function App() {
       <div className="pointer-events-none">
   <AnimatedBackground />
 </div>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          {/* PUBLIC */}
-          <Route
-            path="/"
-            element={
-              <LandingPage
-                showWelcome={showWelcome}
-                setShowWelcome={setShowWelcome}
-              />
-            }
-          />
-
-          <Route path="/project/:slug" element={<ProjectPageLayout />} />
-
-          {/* AUTH */}
-          <Route path="/login" element={<Login />} />
-
-          {/* ADMIN (PROTECTED) */}
-          <Route
-            path="/dashboard/*"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* 404 */}
-          <Route
-            path="*"
-            element={
-              <Suspense fallback={null}>
-                <NotFoundPage />
-              </Suspense>
-            }
-          />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
+          <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
+          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+          <Route path="/dashboard/*" element={<PageTransition><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
+          <Route path="*" element={<PageTransition><Suspense fallback={null}><NotFoundPage /></Suspense></PageTransition>} />
         </Routes>
-      </BrowserRouter>
+      </AnimatePresence>
     </HelmetProvider>
     </ErrorBoundary>
   );
 }
 
-export default App;
+function AppWrapper() {
+  return (
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </BrowserRouter>
+  );
+}
+
+export default AppWrapper;

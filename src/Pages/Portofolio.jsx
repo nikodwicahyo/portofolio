@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 
 import { supabase } from "../supabase";
 
@@ -9,8 +9,7 @@ import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
 import CardProject from "../components/CardProject";
 import TechStackIcon from "../components/TechStackIcon";
-import AOS from "aos";
-import "aos/dist/aos.css";
+import LazyImage from "../components/LazyImage";
 import Certificate from "../components/Certificate";
 import { Code, Award, Boxes, Briefcase, Calendar, MapPin } from "lucide-react";
 
@@ -65,7 +64,9 @@ function a11yProps(index) {
   };
 }
 
-const ExperienceCard = ({ exp, onSelect }) => {
+// ponytail: inline components kept to avoid prop threading overhead
+
+const ExperienceCard = memo(({ exp, onSelect }) => {
   const fmt = (d) => {
     if (!d) return "Present";
     return new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -77,7 +78,7 @@ const ExperienceCard = ({ exp, onSelect }) => {
         <div className="flex items-start gap-3 mb-3">
           {exp.logo_url ? (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-white/5 shrink-0">
-              <img src={exp.logo_url} alt={exp.company} className="w-full h-full object-cover" loading="lazy" />
+              <LazyImage src={exp.logo_url} alt={exp.company} className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shrink-0">
@@ -115,7 +116,7 @@ const ExperienceCard = ({ exp, onSelect }) => {
       </div>
     </div>
   );
-};
+});
 
 const ExperienceModal = ({ experience, onClose }) => {
   if (!experience) return null;
@@ -124,9 +125,9 @@ const ExperienceModal = ({ experience, onClose }) => {
     return new Date(d).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-2xl mx-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose} style={{ animation: 'fadeIn 0.2s ease-out' }}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" style={{ animation: 'fadeIn 0.2s ease-out' }} />
+      <div className="relative z-10 w-full max-w-2xl mx-auto" style={{ animation: 'fadeIn 0.2s ease-out, scaleIn 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
         <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-30 pointer-events-none" />
         <div className="relative bg-[#0a0a1a] border border-white/12 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-white/8">
@@ -141,7 +142,7 @@ const ExperienceModal = ({ experience, onClose }) => {
             <div className="flex items-start gap-3 sm:gap-4">
               {experience.logo_url ? (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-white/5 shrink-0">
-                  <img src={experience.logo_url} alt={experience.company} className="w-full h-full object-cover" />
+                  <LazyImage src={experience.logo_url} alt={experience.company} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shrink-0">
@@ -223,6 +224,7 @@ const ExperienceTimeline = ({ experiences, onSelect }) => (
           <div key={exp.id || index}
             data-aos={window.innerWidth < 768 ? "fade-up" : isEven ? "fade-right" : "fade-left"}
             data-aos-duration="1000"
+            data-aos-once="true"
             className="relative pl-10 sm:pl-14 md:pl-0"
           >
             <div className="absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] ring-4 ring-[#030014] shadow-lg shadow-indigo-500/30 md:-translate-x-1/2 z-10" />
@@ -247,19 +249,91 @@ const ExperienceTimeline = ({ experiences, onSelect }) => (
   </div>
 );
 
+const TAB_META = [
+  { key: 'projects', order: { field: 'id', asc: false } },
+  { key: 'certificates', order: { field: 'id', asc: false } },
+  { key: 'experiences', order: { field: 'start_date', asc: false } },
+  { key: 'tech_stacks', order: { field: 'display_order', asc: true } },
+];
+
+const EMPTY = [];
+
+function useTabData() {
+  const initial = {};
+  for (const { key } of TAB_META) {
+    const raw = localStorage.getItem(key);
+    if (raw) { const p = JSON.parse(raw); if (p.length > 0) { initial[key] = { data: p, loading: false, error: null }; continue; } }
+    initial[key] = { data: EMPTY, loading: true, error: null };
+  }
+
+  const [state, setState] = useState(initial);
+  const fetching = useRef(false);
+
+  const doFetch = useCallback(async (retries = 2) => {
+    if (fetching.current) return;
+    fetching.current = true;
+
+    const fetchOne = async ({ key, order }) => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const { data, error } = await supabase.from(key).select("*").order(order.field, { ascending: order.asc });
+          if (error) throw error;
+          if (data === null) throw new Error(`Supabase returned null for "${key}" — check RLS policies`);
+          setState(prev => ({ ...prev, [key]: { data, loading: false, error: null } }));
+          if (data.length > 0) localStorage.setItem(key, JSON.stringify(data));
+          return;
+        } catch (e) {
+          console.error(`[${key}] attempt ${attempt + 1}/${retries + 1} failed:`, e.message);
+          if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          else setState(prev => ({ ...prev, [key]: { data: prev[key]?.data || EMPTY, loading: false, error: e.message } }));
+        }
+      }
+    };
+
+    await Promise.all(TAB_META.map(fetchOne));
+    fetching.current = false;
+  }, []);
+
+  useEffect(() => { doFetch(); }, [doFetch]);
+
+  return { state, retry: () => { fetching.current = false; doFetch(); } };
+}
+
+const RetryButton = ({ onClick }) => (
+  <button onClick={onClick}
+    className="px-4 py-2 mt-3 text-sm font-medium text-white bg-white/10 hover:bg-white/15 rounded-lg border border-white/10 transition-colors"
+  >
+    Retry
+  </button>
+);
+
+const ErrorState = ({ msg, onRetry }) => (
+  <div className="text-center py-12 sm:py-16">
+    <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    </div>
+    <p className="text-gray-400 text-xs sm:text-sm mb-1">Failed to load data</p>
+    <p className="text-gray-600 text-xs max-w-md mx-auto px-4">{msg}</p>
+    {onRetry && <RetryButton onClick={onRetry} />}
+  </div>
+);
+
 export default function FullWidthTabs() {
-  const [value, setValue] = useState(0);
-  const [projects, setProjects] = useState([]);
-  const [certificates, setCertificates] = useState([]);
-  const [experiences, setExperiences] = useState([]);
-  const [techStacks, setTechStacks] = useState([]);
-  const [projLoading, setProjLoading] = useState(true);
-  const [certLoading, setCertLoading] = useState(true);
-  const [expLoading, setExpLoading] = useState(true);
+  const { state: tabData, retry } = useTabData();
+  const { data: projects, loading: projLoading, error: projError } = tabData.projects;
+  const { data: certificates, loading: certLoading, error: certError } = tabData.certificates;
+  const { data: experiences, loading: expLoading, error: expError } = tabData.experiences;
+  const { data: techStacks, loading: techLoading, error: techError } = tabData.tech_stacks;
+
+  const [value, setValue] = useState(() => {
+    const saved = sessionStorage.getItem('portfolioTab');
+    return saved ? Number(saved) : 0;
+  });
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllCertificates, setShowAllCertificates] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState(null);
-  const [techLoading, setTechLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
 
@@ -270,43 +344,14 @@ export default function FullWidthTabs() {
   }, []);
 
   useEffect(() => {
-    AOS.init({ once: false });
+    const el = document.getElementById('Portofolio');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const fetchAll = useCallback(async () => {
-    const fetchOne = async (table, setData, setLoadDone, order) => {
-      try {
-        const { data, error } = await supabase.from(table).select("*").order(order.field, { ascending: order.asc });
-        if (error) throw error;
-        if (data) { setData(data); setLoadDone(false); localStorage.setItem(table, JSON.stringify(data)); }
-      } catch (e) {
-        console.error(`${table} fetch error:`, e.message);
-        setLoadDone(false);
-      }
-    };
-
-    await Promise.all([
-      fetchOne("projects", setProjects, setProjLoading, { field: 'id', asc: false }),
-      fetchOne("certificates", setCertificates, setCertLoading, { field: 'id', asc: false }),
-      fetchOne("experiences", setExperiences, setExpLoading, { field: 'start_date', asc: false }),
-      fetchOne("tech_stacks", setTechStacks, setTechLoading, { field: 'display_order', asc: true }),
-    ]);
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const loadCache = (key, setData, setLoadDone) => {
-      const raw = localStorage.getItem(key);
-      if (raw) { setData(JSON.parse(raw)); setLoadDone(false); }
-    };
-    loadCache('projects', setProjects, setProjLoading);
-    loadCache('certificates', setCertificates, setCertLoading);
-    loadCache('experiences', setExperiences, setExpLoading);
-    if (mounted) fetchAll();
-    return () => { mounted = false; };
-  }, [fetchAll]);
-
-  const handleChange = (event, newValue) => setValue(newValue);
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+    sessionStorage.setItem('portfolioTab', newValue);
+  };
 
   const toggleShowMore = useCallback((type) => {
     if (type === 'projects') setShowAllProjects(p => !p);
@@ -323,88 +368,86 @@ export default function FullWidthTabs() {
     </div>
   );
 
-  const ExpSection = () => {
-    if (expLoading && experiences.length === 0) return <ExpShimmer />;
-    if (!expLoading && experiences.length === 0) return emptyState(Briefcase, "No experiences to display yet");
-    return <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />;
+  const sectionContent = (loading, data, error, shimmer, icon, emptyMsg, done) => {
+    if (loading && data.length === 0) return shimmer;
+    if (error && data.length === 0) return <ErrorState msg={error} onRetry={retry} />;
+    if (!loading && data.length === 0) return emptyState(icon, emptyMsg);
+    return done;
   };
 
-  const ProjectSection = () => {
-    if (projLoading && projects.length === 0) return <CardGridLoading count={initialItems} cols={2} />;
-    if (!projLoading && projects.length === 0) return emptyState(Code, "No projects to display yet");
-    return (
-      <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
-          {displayedProjects.map((project, index) => (
-            <div key={project.id || index}
-              data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-              data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-            >
-              <CardProject Img={project.img} Title={project.title} Description={project.description} Link={project.link} id={project.id} />
-            </div>
-          ))}
-        </div>
-        {projects.length > initialItems && (
-          <div className="mt-6 w-full flex justify-center sm:justify-start">
-            <ToggleButton onClick={() => toggleShowMore('projects')} isShowingMore={showAllProjects} />
-          </div>
-        )}
-      </>
-    );
-  };
+  const ExpSection = () => sectionContent(expLoading, experiences, expError,
+    <ExpShimmer />, Briefcase, "No experiences to display yet",
+    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />
+  );
 
-  const CertSection = () => {
-    if (certLoading && certificates.length === 0) return <CardGridLoading count={initialItems} cols={3} />;
-    if (!certLoading && certificates.length === 0) return emptyState(Award, "No certificates to display yet");
-    return (
-      <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-          {displayedCertificates.map((cert, index) => (
-            <div key={cert.id || index}
-              data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-              data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-            >
-              <Certificate ImgSertif={cert.img} />
-            </div>
-          ))}
-        </div>
-        {certificates.length > initialItems && (
-          <div className="mt-6 w-full flex justify-center sm:justify-start">
-            <ToggleButton onClick={() => toggleShowMore('certificates')} isShowingMore={showAllCertificates} />
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const TechSection = () => {
-    if (techLoading) return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 py-8">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
-            <div className="relative bg-white/5 border border-white/12 rounded-2xl p-4 sm:p-6 flex flex-col items-center gap-3">
-              <ShimmerBlock className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl" />
-              <ShimmerBlock className="h-4 w-16 sm:w-20 rounded-lg" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-    if (techStacks.length === 0) return emptyState(Boxes, "No tech stacks to display yet");
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8">
-        {techStacks.map((stack, index) => (
-          <div key={stack.id}
+  const ProjectSection = () => sectionContent(projLoading, projects, projError,
+    <CardGridLoading count={initialItems} cols={2} />, Code, "No projects to display yet",
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
+        {displayedProjects.map((project, index) => (
+          <div key={project.id || index}
             data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
             data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+            data-aos-once="true"
           >
-            <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
+            <CardProject Img={project.img} Title={project.title} Description={project.description} Link={project.link} id={project.id} />
           </div>
         ))}
       </div>
-    );
-  };
+      {projects.length > initialItems && (
+        <div className="mt-6 w-full flex justify-center sm:justify-start">
+          <ToggleButton onClick={() => toggleShowMore('projects')} isShowingMore={showAllProjects} />
+        </div>
+      )}
+    </>
+  );
+
+  const CertSection = () => sectionContent(certLoading, certificates, certError,
+    <CardGridLoading count={initialItems} cols={3} />, Award, "No certificates to display yet",
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 w-full">
+        {displayedCertificates.map((cert, index) => (
+          <div key={cert.id || index}
+            data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
+            data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+            data-aos-once="true"
+          >
+            <Certificate ImgSertif={cert.img} />
+          </div>
+        ))}
+      </div>
+      {certificates.length > initialItems && (
+        <div className="mt-6 w-full flex justify-center sm:justify-start">
+          <ToggleButton onClick={() => toggleShowMore('certificates')} isShowingMore={showAllCertificates} />
+        </div>
+      )}
+    </>
+  );
+
+  const TechSection = () => sectionContent(techLoading, techStacks, techError,
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 py-8">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="relative group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
+          <div className="relative bg-white/5 border border-white/12 rounded-2xl p-4 sm:p-6 flex flex-col items-center gap-3">
+            <ShimmerBlock className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl" />
+            <ShimmerBlock className="h-4 w-16 sm:w-20 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>, Boxes, "No tech stacks to display yet",
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 w-full">
+      {techStacks.map((stack, index) => (
+        <div key={stack.id}
+          data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
+          data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
+          data-aos-once="true"
+        >
+          <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="md:px-[10%] px-[5%] w-full sm:mt-0 mt-[3rem] bg-[#030014] overflow-hidden scroll-mt-16" id="Portofolio">
@@ -480,7 +523,7 @@ export default function FullWidthTabs() {
         </AppBar>
 
         <TabPanel value={value} index={0}>
-          <div className="max-w-6xl mx-auto px-0 sm:px-4 py-2 sm:py-4">
+          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
             <ExpSection />
             {selectedExperience && (
               <ExperienceModal experience={selectedExperience} onClose={() => setSelectedExperience(null)} />
@@ -489,17 +532,19 @@ export default function FullWidthTabs() {
         </TabPanel>
 
         <TabPanel value={value} index={1}>
-          <div className="container mx-auto flex justify-center items-center overflow-hidden">
+          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
             <ProjectSection />
           </div>
         </TabPanel>
 
         <TabPanel value={value} index={2}>
-          <CertSection />
+          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
+            <CertSection />
+          </div>
         </TabPanel>
 
         <TabPanel value={value} index={3}>
-          <div className="container mx-auto flex justify-center items-center overflow-hidden pb-[5%]">
+          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
             <TechSection />
           </div>
         </TabPanel>

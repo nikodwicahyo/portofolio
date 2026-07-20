@@ -2,8 +2,7 @@ import React, { useEffect, useState, memo, useMemo } from "react"
 import { supabase } from "../supabase"
 import { Code, Award, Globe, ArrowUpRight, Sparkles } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
-import AOS from 'aos'
-import 'aos/dist/aos.css'
+import LazyImage from "../components/LazyImage"
 
 // Memoized Components
 const Header = memo(() => (
@@ -51,11 +50,10 @@ const ProfileImage = memo(() => (
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 z-10 transition-opacity duration-700 group-hover:opacity-0 hidden sm:block" />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 via-transparent to-blue-500/20 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block" />
           
-          <img
+          <LazyImage
             src="/Photo.png"
             alt="Profile"
             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-2"
-            loading="lazy"
           />
 
           {/* Advanced hover effects - desktop only */}
@@ -162,30 +160,6 @@ const AboutPage = () => {
     };
     fetchCounts();
     return () => { cancelled = true; };
-  }, []);
-
-  // Optimized AOS initialization
-  useEffect(() => {
-    const initAOS = () => {
-      AOS.init({
-        once: false, 
-      });
-    };
-
-    initAOS();
-    
-    // Debounced resize handler
-    let resizeTimer;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(initAOS, 250);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimer);
-    };
   }, []);
 
   // Memoized stats data

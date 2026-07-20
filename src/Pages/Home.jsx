@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram, Sparkles } from "lucide-react"
-import AOS from 'aos'
-import 'aos/dist/aos.css'
+import LazyImage from "../components/LazyImage"
 
 const StatusBadge = memo(() => (
   <div className="inline-block animate-float lg:mx-0" data-aos="zoom-in" data-aos-delay="400">
@@ -96,19 +95,6 @@ const Home = () => {
   const [charIndex, setCharIndex] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
-
-  useEffect(() => {
-    const initAOS = () => {
-      AOS.init({
-        once: true,
-        offset: 10,
-      });
-    };
-
-    initAOS();
-    window.addEventListener('resize', initAOS);
-    return () => window.removeEventListener('resize', initAOS);
-  }, []);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -233,7 +219,7 @@ const Home = () => {
                   <div className={`relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500 ${
                     isHovering ? "scale-105" : "scale-100"
                   }`}>
-                    <img
+                    <LazyImage
                       src="Animation1.gif"
                       alt="Developer Animation"
                       className={`w-full h-full object-contain transition-all duration-500 ${

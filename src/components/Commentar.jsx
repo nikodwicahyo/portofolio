@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'lucide-react';
-import AOS from "aos";
-import "aos/dist/aos.css";
 import { supabase } from '../supabase';
 
 
@@ -143,14 +141,6 @@ const Komentar = () => {
     const [pinnedComments, setPinnedComments] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
-
-    useEffect(() => {
-        // Initialize AOS
-        AOS.init({
-            once: false,
-            duration: 1000,
-        });
-    }, []);
 
     // Fetch pinned comments
     useEffect(() => {

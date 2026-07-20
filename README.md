@@ -11,29 +11,16 @@ Personal portfolio website built with React and Supabase, featuring a public-fac
 - **ReactJS** — Frontend framework
 - **Tailwind CSS** — Utility-first CSS framework
 - **Supabase** — Backend (database, auth, storage, realtime)
-- **Framer Motion** — Animation library
-- **GSAP** — Animation library
+- **Framer Motion** — Animation library (page transitions)
 - **AOS** — Animate On Scroll library
 - **React Router** — Client-side routing
 - **React Helmet Async** — SEO & meta tags
 - **Lucide** — Icon library
-- **Material UI** — React component library
-- **SweetAlert2** — Beautiful alert dialogs
-- **Headless UI** — Accessible UI primitives
-- **Heroicons** — SVG icons
-- **Embla Carousel** — Carousel component
-- **React Spring** — Spring-based animations
-- **Spline** — 3D interactive scenes
-- **LottieFiles** — Animation files
+- **Material UI** — React component library (tabbed portfolio)
+- **SweetAlert2** — Alert dialogs
 - **React Hook Form** — Form validation
 - **Axios** — HTTP client
-- **Typewriter Effect** — Typing animation
-- **React Intersection Observer** — Scroll-based triggers
-- **shadcn/ui** — Component primitives
-- **styled-components** — CSS-in-JS
-- **tailwind-merge** — Tailwind class merging
-- **clsx** — Conditional classnames
-- **PDF.js** — PDF rendering
+- **PDF.js** — PDF thumbnail rendering
 
 ---
 

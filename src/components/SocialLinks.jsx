@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   Linkedin,
   Github,
@@ -6,8 +5,7 @@ import {
   Mail,
   ExternalLink,
 } from "lucide-react";
-import AOS from "aos";
-import "aos/dist/aos.css";
+
 const socialLinks = [
   {
     name: "LinkedIn",
@@ -52,13 +50,6 @@ const SocialLinks = () => {
   const linkedIn = socialLinks.find((link) => link.isPrimary);
   const otherLinks = socialLinks.filter((link) => !link.isPrimary);
   const [instagram, github, email] = otherLinks;
-
-  useEffect(() => {
-    AOS.init({
-      offset: 10,
-     
-    });
-  }, []);
 
   return (
     <div className="w-full bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-6 py-8 backdrop-blur-xl">

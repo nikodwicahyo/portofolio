@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Box, Typography } from "@mui/material";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PDFThumbnail from "./PDFThumbnail";
 import PDFViewerModal from "./PDFViewerModal";
 import ImageViewerModal from "./ImageViewerModal";
+import LazyImage from "./LazyImage";
 import { isPdfUrl } from "../utils/fileType";
 
-const Certificate = ({ ImgSertif }) => {
+const Certificate = memo(({ ImgSertif }) => {
   const [openPdf, setOpenPdf] = useState(false);
   const [openImage, setOpenImage] = useState(false);
   const isPdf = isPdfUrl(ImgSertif);
@@ -101,18 +102,14 @@ const Certificate = ({ ImgSertif }) => {
               </Box>
             </Box>
           ) : (
-            <img
-              className="certificate-image"
+            <LazyImage
               src={ImgSertif}
               alt="Certificate"
+              className="certificate-image !w-full object-cover aspect-[16/11.5]"
+              wrapperClassName="w-full"
               style={{
-                width: "100%",
-                height: "auto",
-                display: "block",
-                objectFit: "cover",
                 filter: "contrast(1.10) brightness(0.9) saturate(1.1)",
                 transition: "filter 0.3s ease",
-                aspectRatio: "16/11.5",
               }}
               onClick={handleOpen}
             />
@@ -197,6 +194,6 @@ const Certificate = ({ ImgSertif }) => {
       />
     </Box>
   );
-};
+});
 
 export default Certificate;

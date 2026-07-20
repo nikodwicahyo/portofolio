@@ -1,10 +1,8 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Share2, User, Mail, MessageSquare, Send } from "lucide-react";
 import SocialLinks from "../components/SocialLinks";
 import Komentar from "../components/Commentar";
 import Swal from "sweetalert2";
-import AOS from "aos";
-import "aos/dist/aos.css";
 import axios from "axios";
 import { useForm } from "react-hook-form";
 
@@ -15,12 +13,6 @@ const ContactPage = () => {
     reset,
     formState: { errors, isSubmitting },
   } = useForm();
-
-  useEffect(() => {
-    AOS.init({
-      once: false,
-    });
-  }, []);
 
   const onSubmit = async (data) => {
     const accessKey = import.meta.env.VITE_FORMLY_ACCESS_KEY;
