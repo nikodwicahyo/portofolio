@@ -135,7 +135,10 @@ const ProjectDetails = () => {
     let storedProjects = [];
     try {
       const raw = localStorage.getItem("projects");
-      if (raw) storedProjects = JSON.parse(raw);
+      if (raw) {
+        const p = JSON.parse(raw);
+        storedProjects = Array.isArray(p) ? p : p.data ?? [];
+      }
     } catch { storedProjects = []; }
     const cached = findProject(storedProjects);
 
