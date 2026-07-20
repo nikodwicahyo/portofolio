@@ -32,11 +32,13 @@ const ImageViewerModal = ({ imageUrl, isOpen, onClose }) => {
       aria-labelledby="image-modal-modal-title"
       aria-describedby="image-modal-modal-description"
       BackdropComponent={Backdrop}
-      BackdropProps={{
-        timeout: 300,
-        sx: {
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          backdropFilter: "blur(5px)",
+      slotProps={{
+        backdrop: {
+          timeout: 300,
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            backdropFilter: "blur(5px)",
+          },
         },
       }}
       sx={{

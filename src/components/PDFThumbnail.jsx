@@ -36,7 +36,7 @@ const renderPDFToDataUrl = async (url) => {
   const pdfData = getPDFData(url);
   const warn = console.warn; console.warn = () => {};
   try {
-    const loadingTask = pdfjsLib.getDocument(pdfData);
+    const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
     const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
 

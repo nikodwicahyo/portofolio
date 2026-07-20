@@ -23,7 +23,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: "application/pdf" });
       a.href = URL.createObjectURL(blob);
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } else {
       a.href = pdfUrl;
     }
@@ -113,11 +113,13 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       aria-labelledby="pdf-viewer-modal-title"
       aria-describedby="pdf-viewer-modal-description"
       BackdropComponent={Backdrop}
-      BackdropProps={{
-        timeout: 300,
-        sx: {
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          backdropFilter: "blur(5px)",
+      slotProps={{
+        backdrop: {
+          timeout: 300,
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            backdropFilter: "blur(5px)",
+          },
         },
       }}
       sx={{
