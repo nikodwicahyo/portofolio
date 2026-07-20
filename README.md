@@ -2,7 +2,7 @@
 
 Personal portfolio website built with React and Supabase, featuring a public-facing site and an admin dashboard.
 
-**Live Demo:** [https://nikodwicahyo.vercel.app](https://nikodwicahyo.vercel.app)
+**Live Demo:** [nikodwicahyo.vercel.app](https://nikodwicahyo.vercel.app)
 
 ---
 
