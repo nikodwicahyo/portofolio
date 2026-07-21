@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Modal, IconButton, Box, Backdrop, Typography, Menu, MenuItem } from "@mui/material";
+import { Modal, IconButton, Box, Backdrop, Typography, Menu, MenuItem, useMediaQuery } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
@@ -23,6 +23,8 @@ const ZOOM_PRESETS = [
   { label: "200%", value: 2 },
 ];
 
+const THUMB_WIDTH = 150;
+
 const base64ToUint8Array = (base64) => {
   const stripped = base64.replace(/\s/g, "");
   const binaryString = atob(stripped);
@@ -32,20 +34,21 @@ const base64ToUint8Array = (base64) => {
 };
 
 const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "document.pdf", title }) => {
+  const isDesktop = useMediaQuery("(min-width:900px)");
   const [numPages, setNumPages] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(null);
   const [rotation, setRotation] = useState(0);
-  const [displayZoom, setDisplayZoom] = useState("100%");
+  const [displayZoom, setDisplayZoom] = useState("Fit");
   const [anchorEl, setAnchorEl] = useState(null);
+  const [thumbnails, setThumbnails] = useState([]);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
   const pagesContainerRef = useRef(null);
   const renderTaskRef = useRef(null);
   const fitScaleRef = useRef(1);
   const obRef = useRef(null);
-  const scrollTopRef = useRef(0);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -68,6 +71,26 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     document.body.removeChild(a);
   }, [pdfUrl, filename]);
 
+  const renderThumbnails = useCallback(async (pdf) => {
+    if (!pdf) return;
+    const imgs = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = THUMB_WIDTH / viewport.width;
+      const thumbViewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = thumbViewport.width;
+      canvas.height = thumbViewport.height;
+      const ctx = canvas.getContext("2d");
+      const warn = console.warn; console.warn = () => {};
+      await page.render({ canvasContext: ctx, viewport: thumbViewport }).promise;
+      console.warn = warn;
+      imgs.push(canvas.toDataURL("image/jpeg", 0.6));
+    }
+    setThumbnails(imgs);
+  }, []);
+
   useEffect(() => {
     if (!isOpen || !pdfUrl) return;
     let cancelled = false;
@@ -75,9 +98,10 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     setNumPages(0);
     setVisiblePage(1);
     pdfRef.current = null;
-    setZoom(1);
+    setZoom(null);
     setRotation(0);
-    setDisplayZoom("100%");
+    setDisplayZoom("Fit");
+    setThumbnails([]);
 
     const loadPdf = async () => {
       const warn = console.warn; console.warn = () => {};
@@ -89,6 +113,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
         if (cancelled) return;
         pdfRef.current = pdf;
         setNumPages(pdf.numPages);
+        renderThumbnails(pdf);
       } catch (err) {
         if (!cancelled) console.error("PDF load failed:", err);
       } finally {
@@ -98,7 +123,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     };
     loadPdf();
     return () => { cancelled = true; };
-  }, [pdfUrl, isOpen]);
+  }, [pdfUrl, isOpen, renderThumbnails]);
 
   const renderAllPages = useCallback(async () => {
     const pdf = pdfRef.current;
@@ -226,6 +251,13 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     return () => { if (obRef.current) obRef.current.disconnect(); };
   }, []);
 
+  const scrollToPage = (pageNum) => {
+    const container = pagesContainerRef.current;
+    if (!container) return;
+    const el = container.querySelector(`[data-page="${pageNum}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const handleZoomIn = () => setZoom(prev => {
     const base = prev ?? fitScaleRef.current;
     return Math.min(10, base * 1.25);
@@ -286,24 +318,55 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           </Box>
         </Box>
 
-        <Box
-          ref={containerRef}
-          sx={{ flex: 1, overflow: "auto", bgcolor: "#0d0d1a", position: "relative" }}
-        >
-          {loading ? (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-              <Typography sx={{ color: "gray" }}>Loading PDF...</Typography>
-            </Box>
-          ) : numPages === 0 ? (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-              <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
-            </Box>
-          ) : (
+        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {isDesktop && thumbnails.length > 0 && (
             <Box
-              ref={pagesContainerRef}
-              sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 2 }}
-            />
+              sx={{
+                width: 180, shrink: 0, overflow: "auto", bgcolor: "#0a0a1a",
+                borderRight: "1px solid rgba(255,255,255,0.08)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2, px: 1,
+              }}
+            >
+              {thumbnails.map((src, i) => (
+                <Box
+                  key={i}
+                  onClick={() => scrollToPage(i + 1)}
+                  sx={{
+                    width: "100%", cursor: "pointer", borderRadius: 1, overflow: "hidden",
+                    border: visiblePage === i + 1 ? "2px solid #6366f1" : "2px solid transparent",
+                    opacity: visiblePage === i + 1 ? 1 : 0.55,
+                    transition: "all 0.2s",
+                    "&:hover": { opacity: 1, borderColor: visiblePage === i + 1 ? "#6366f1" : "rgba(255,255,255,0.2)" },
+                  }}
+                >
+                  <img src={src} alt={`Page ${i + 1}`} style={{ width: "100%", display: "block" }} />
+                  <Typography sx={{ textAlign: "center", fontSize: 11, color: "gray", py: 0.3 }}>
+                    {i + 1}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
           )}
+
+          <Box
+            ref={containerRef}
+            sx={{ flex: 1, overflow: "auto", bgcolor: "#0d0d1a", position: "relative" }}
+          >
+            {loading ? (
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                <Typography sx={{ color: "gray" }}>Loading PDF...</Typography>
+              </Box>
+            ) : numPages === 0 ? (
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
+              </Box>
+            ) : (
+              <Box
+                ref={pagesContainerRef}
+                sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 2 }}
+              />
+            )}
+          </Box>
         </Box>
 
         <Box
