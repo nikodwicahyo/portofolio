@@ -44,9 +44,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const canvasRef = useRef(null);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
-  const textLayerRef = useRef(null);
   const renderTaskRef = useRef(null);
-  const textLayerTaskRef = useRef(null);
   const fitScaleRef = useRef(1);
 
   const handleDownload = useCallback(() => {
@@ -106,8 +104,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     const pdf = pdfRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    const textLayerEl = textLayerRef.current;
-    if (!pdf || !canvas || !container || !textLayerEl) return;
+    if (!pdf || !canvas || !container) return;
 
     if (renderTaskRef.current) {
       try { await renderTaskRef.current.cancel(); } catch {}
@@ -136,26 +133,6 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
       console.warn = warn;
-
-      textLayerEl.innerHTML = "";
-      textLayerEl.style.width = `${viewport.width}px`;
-      textLayerEl.style.height = `${viewport.height}px`;
-
-      try {
-        const textContent = await page.getTextContent();
-        if (textContent.items.length > 0) {
-          const textLayer = new pdfjsLib.TextLayer({
-            textContentSource: textContent,
-            container: textLayerEl,
-            viewport,
-          });
-          textLayerTaskRef.current = textLayer;
-          await textLayer.render();
-          textLayerTaskRef.current = null;
-        }
-      } catch (e) {
-        if (e?.name !== "RenderingCancelledException") console.warn("Text layer failed:", e);
-      }
 
       setDisplayZoom(zoom !== null ? Math.round(effectiveScale * 100) + "%" : "Fit");
     } catch (err) {
@@ -284,20 +261,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           ) : numPages === 0 ? (
             <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
           ) : (
-            <Box sx={{ position: "relative", display: "inline-block" }}>
-              <canvas ref={canvasRef} style={{ display: "block" }} />
-              <Box
-                ref={textLayerRef}
-                sx={{
-                  position: "absolute", top: 0, left: 0, userSelect: "text", zIndex: 2,
-                  "& span": {
-                    color: "transparent !important", position: "absolute", whiteSpace: "pre",
-                    cursor: "text", transformOrigin: "0% 0%", pointerEvents: "auto",
-                  },
-                  "& ::selection": { background: "rgba(99, 102, 241, 0.4)" },
-                }}
-              />
-            </Box>
+            <canvas ref={canvasRef} style={{ display: "block" }} />
           )}
         </Box>
 
