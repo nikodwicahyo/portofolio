@@ -14,7 +14,7 @@ import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const ZOOM_PRESETS = [
-  { label: "Fit to page", value: null },
+  { label: "Fit width", value: null },
   { label: "50%", value: 0.5 },
   { label: "75%", value: 0.75 },
   { label: "100%", value: 1 },
@@ -35,9 +35,9 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const [numPages, setNumPages] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [zoom, setZoom] = useState(null);
+  const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [displayZoom, setDisplayZoom] = useState("Fit");
+  const [displayZoom, setDisplayZoom] = useState("100%");
   const [anchorEl, setAnchorEl] = useState(null);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
@@ -45,6 +45,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const renderTaskRef = useRef(null);
   const fitScaleRef = useRef(1);
   const obRef = useRef(null);
+  const scrollTopRef = useRef(0);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -74,9 +75,9 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     setNumPages(0);
     setVisiblePage(1);
     pdfRef.current = null;
-    setZoom(null);
+    setZoom(1);
     setRotation(0);
-    setDisplayZoom("Fit");
+    setDisplayZoom("100%");
 
     const loadPdf = async () => {
       const warn = console.warn; console.warn = () => {};
@@ -120,7 +121,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           if (!canvas) continue;
 
           const unscaled = page.getViewport({ scale: 1, rotation });
-          const fitScale = Math.min(containerWidth / unscaled.width, 5);
+          const fitScale = containerWidth / unscaled.width;
           if (pageNum === 1) fitScaleRef.current = fitScale;
           const s = zoom !== null ? zoom : fitScale;
           const viewport = page.getViewport({ scale: s, rotation });
@@ -145,7 +146,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           const page = await pdf.getPage(i);
 
           const wrapper = document.createElement("div");
-          wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;margin-bottom:16px;width:100%;";
+          wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;padding-bottom:16px;width:100%;";
           wrapper.dataset.page = i;
 
           const canvas = document.createElement("canvas");
@@ -153,7 +154,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           container.appendChild(wrapper);
 
           const unscaled = page.getViewport({ scale: 1, rotation });
-          const fitScale = Math.min(containerWidth / unscaled.width, 5);
+          const fitScale = containerWidth / unscaled.width;
           if (i === 1) fitScaleRef.current = fitScale;
           const s = zoom !== null ? zoom : fitScale;
           const viewport = page.getViewport({ scale: s, rotation });
@@ -201,21 +202,6 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     const timer = setTimeout(renderAllPages, 0);
     return () => clearTimeout(timer);
   }, [renderAllPages, loading]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!isOpen || !container) return;
-    const onWheel = (e) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      setZoom(prev => {
-        const base = prev ?? fitScaleRef.current;
-        return Math.max(0.1, Math.min(10, base * (e.deltaY > 0 ? 0.8 : 1.25)));
-      });
-    };
-    container.addEventListener("wheel", onWheel, { passive: false });
-    return () => container.removeEventListener("wheel", onWheel);
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -315,7 +301,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           ) : (
             <Box
               ref={pagesContainerRef}
-              sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 2, minHeight: "100%" }}
+              sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 2 }}
             />
           )}
         </Box>
@@ -364,7 +350,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
             <IconButton size="small" onClick={handleZoomIn} title="Zoom In (Ctrl++)"
               sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
             ><ZoomInIcon fontSize="small" /></IconButton>
-            <IconButton size="small" onClick={() => setZoom(null)} title="Fit to page (Ctrl+0)"
+            <IconButton size="small" onClick={() => setZoom(null)} title="Fit width (Ctrl+0)"
               sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" }, ml: 0.5 }}
             ><FitScreenIcon fontSize="small" /></IconButton>
             <IconButton size="small" onClick={() => setRotation(r => (r + 90) % 360)} title="Rotate (R)"
