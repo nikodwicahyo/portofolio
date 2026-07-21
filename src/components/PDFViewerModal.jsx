@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Modal, IconButton, Box, Backdrop, Typography, Menu, MenuItem } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
@@ -35,17 +33,18 @@ const base64ToUint8Array = (base64) => {
 
 const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "document.pdf", title }) => {
   const [numPages, setNumPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visiblePage, setVisiblePage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(null);
   const [rotation, setRotation] = useState(0);
   const [displayZoom, setDisplayZoom] = useState("Fit");
   const [anchorEl, setAnchorEl] = useState(null);
-  const canvasRef = useRef(null);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
+  const pagesContainerRef = useRef(null);
   const renderTaskRef = useRef(null);
   const fitScaleRef = useRef(1);
+  const obRef = useRef(null);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -72,8 +71,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     if (!isOpen || !pdfUrl) return;
     let cancelled = false;
     setLoading(true);
-    setCurrentPage(1);
     setNumPages(0);
+    setVisiblePage(1);
     pdfRef.current = null;
     setZoom(null);
     setRotation(0);
@@ -100,58 +99,83 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     return () => { cancelled = true; };
   }, [pdfUrl, isOpen]);
 
-  const renderPage = useCallback(async () => {
+  const renderAllPages = useCallback(async () => {
     const pdf = pdfRef.current;
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!pdf || !canvas || !container) return;
+    const container = pagesContainerRef.current;
+    if (!pdf || !container) return;
 
     if (renderTaskRef.current) {
       try { await renderTaskRef.current.cancel(); } catch {}
     }
 
+    if (obRef.current) { obRef.current.disconnect(); obRef.current = null; }
+
+    container.innerHTML = "";
+
     try {
-      const page = await pdf.getPage(currentPage);
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      const unscaled = page.getViewport({ scale: 1, rotation });
-      const fitScale = Math.min(containerWidth / unscaled.width, containerHeight / unscaled.height, 5);
-      fitScaleRef.current = fitScale;
-      const effectiveScale = zoom !== null ? zoom : fitScale;
-      const viewport = page.getViewport({ scale: effectiveScale, rotation });
+      const containerWidth = container.clientWidth || 800;
 
-      const ctx = canvas.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = viewport.width * dpr;
-      canvas.height = viewport.height * dpr;
-      canvas.style.width = `${viewport.width}px`;
-      canvas.style.height = `${viewport.height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
 
-      const warn = console.warn; console.warn = () => {};
-      renderTaskRef.current = page.render({ canvasContext: ctx, viewport });
-      await renderTaskRef.current.promise;
-      renderTaskRef.current = null;
-      console.warn = warn;
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;margin-bottom:16px;width:100%;";
+        wrapper.dataset.page = i;
 
-      setDisplayZoom(zoom !== null ? Math.round(effectiveScale * 100) + "%" : "Fit");
+        const canvas = document.createElement("canvas");
+        wrapper.appendChild(canvas);
+        container.appendChild(wrapper);
+
+        const unscaled = page.getViewport({ scale: 1, rotation });
+        const fitScale = Math.min(containerWidth / unscaled.width, 5);
+        if (i === 1) fitScaleRef.current = fitScale;
+        const effectiveScale = zoom !== null ? zoom : fitScale;
+        const displayScale = zoom !== null ? zoom : fitScale;
+        const viewport = page.getViewport({ scale: displayScale, rotation });
+
+        const ctx = canvas.getContext("2d");
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = viewport.width * dpr;
+        canvas.height = viewport.height * dpr;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const warn = console.warn; console.warn = () => {};
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        console.warn = warn;
+      }
+
+      const pageEls = container.querySelectorAll("[data-page]");
+      if (pageEls.length > 0) {
+        obRef.current = new IntersectionObserver(
+          (entries) => {
+            let maxRatio = 0;
+            let best = visiblePage;
+            for (const entry of entries) {
+              if (entry.intersectionRatio > maxRatio) {
+                maxRatio = entry.intersectionRatio;
+                best = Number(entry.target.dataset.page);
+              }
+            }
+            if (best) setVisiblePage(best);
+          },
+          { threshold: [0, 0.25, 0.5, 0.75, 1] }
+        );
+        for (const el of pageEls) obRef.current.observe(el);
+      }
+
+      setDisplayZoom(zoom !== null ? Math.round((zoom !== null ? zoom : fitScaleRef.current) * 100) + "%" : "Fit");
     } catch (err) {
       if (err?.name !== "RenderingCancelledException") console.error("PDF render failed:", err);
     }
-  }, [currentPage, zoom, rotation]);
+  }, [zoom, rotation, visiblePage]);
 
   useEffect(() => {
     if (!pdfRef.current || loading) return;
-    const timer = setTimeout(renderPage, 0);
+    const timer = setTimeout(renderAllPages, 0);
     return () => clearTimeout(timer);
-  }, [renderPage, loading]);
-
-  useEffect(() => {
-    if (!isOpen || !pdfRef.current || loading) return;
-    const onResize = () => { if (zoom === null) renderPage(); };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [isOpen, loading, zoom, renderPage]);
+  }, [renderAllPages, loading]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -177,17 +201,19 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       if (e.key === "-") { e.preventDefault(); handleZoomOut(); return; }
       if (e.key === "0" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setZoom(null); return; }
       if (e.key === "r" || e.key === "R") { setRotation(r => (r + 90) % 360); return; }
-      if (e.key === "ArrowLeft") { setCurrentPage(p => Math.max(1, p - 1)); return; }
-      if (e.key === "ArrowRight") { setCurrentPage(p => Math.min(numPages, p + 1)); return; }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, numPages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => { if (obRef.current) obRef.current.disconnect(); };
+  }, []);
 
   const handleZoomIn = () => setZoom(prev => {
     const base = prev ?? fitScaleRef.current;
@@ -251,17 +277,21 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
 
         <Box
           ref={containerRef}
-          sx={{
-            flex: 1, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center",
-            bgcolor: "#0d0d1a", position: "relative",
-          }}
+          sx={{ flex: 1, overflow: "auto", bgcolor: "#0d0d1a", position: "relative" }}
         >
           {loading ? (
-            <Typography sx={{ color: "gray" }}>Loading PDF...</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+              <Typography sx={{ color: "gray" }}>Loading PDF...</Typography>
+            </Box>
           ) : numPages === 0 ? (
-            <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+              <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
+            </Box>
           ) : (
-            <canvas ref={canvasRef} style={{ display: "block" }} />
+            <Box
+              ref={pagesContainerRef}
+              sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 2, minHeight: "100%" }}
+            />
           )}
         </Box>
 
@@ -317,17 +347,9 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
             ><RotateRightIcon fontSize="small" /></IconButton>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <IconButton size="small" disabled={currentPage <= 1}
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              sx={{ color: "white", "&:disabled": { opacity: 0.3 } }}
-            ><ChevronLeftIcon /></IconButton>
-            <Typography sx={{ color: "white", fontSize: 14 }}>{currentPage} / {numPages}</Typography>
-            <IconButton size="small" disabled={currentPage >= numPages}
-              onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
-              sx={{ color: "white", "&:disabled": { opacity: 0.3 } }}
-            ><ChevronRightIcon /></IconButton>
-          </Box>
+          <Typography sx={{ color: "white", fontSize: 14 }}>
+            Page {visiblePage} of {numPages || "—"}
+          </Typography>
         </Box>
       </Box>
     </Modal>
