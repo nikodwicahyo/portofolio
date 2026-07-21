@@ -108,68 +108,93 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       try { await renderTaskRef.current.cancel(); } catch {}
     }
 
-    if (obRef.current) { obRef.current.disconnect(); obRef.current = null; }
-
-    container.innerHTML = "";
+    const containerWidth = container.clientWidth || 800;
+    const existing = container.querySelectorAll("[data-page]");
 
     try {
-      const containerWidth = container.clientWidth || 800;
+      if (existing.length === pdf.numPages) {
+        for (const wrapper of existing) {
+          const pageNum = Number(wrapper.dataset.page);
+          const page = await pdf.getPage(pageNum);
+          const canvas = wrapper.querySelector("canvas");
+          if (!canvas) continue;
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
+          const unscaled = page.getViewport({ scale: 1, rotation });
+          const fitScale = Math.min(containerWidth / unscaled.width, 5);
+          if (pageNum === 1) fitScaleRef.current = fitScale;
+          const s = zoom !== null ? zoom : fitScale;
+          const viewport = page.getViewport({ scale: s, rotation });
 
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;margin-bottom:16px;width:100%;";
-        wrapper.dataset.page = i;
+          const ctx = canvas.getContext("2d");
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = viewport.width * dpr;
+          canvas.height = viewport.height * dpr;
+          canvas.style.width = `${viewport.width}px`;
+          canvas.style.height = `${viewport.height}px`;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const canvas = document.createElement("canvas");
-        wrapper.appendChild(canvas);
-        container.appendChild(wrapper);
+          const warn = console.warn; console.warn = () => {};
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          console.warn = warn;
+        }
+      } else {
+        if (obRef.current) { obRef.current.disconnect(); obRef.current = null; }
+        container.innerHTML = "";
 
-        const unscaled = page.getViewport({ scale: 1, rotation });
-        const fitScale = Math.min(containerWidth / unscaled.width, 5);
-        if (i === 1) fitScaleRef.current = fitScale;
-        const effectiveScale = zoom !== null ? zoom : fitScale;
-        const displayScale = zoom !== null ? zoom : fitScale;
-        const viewport = page.getViewport({ scale: displayScale, rotation });
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
 
-        const ctx = canvas.getContext("2d");
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = viewport.width * dpr;
-        canvas.height = viewport.height * dpr;
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          const wrapper = document.createElement("div");
+          wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;margin-bottom:16px;width:100%;";
+          wrapper.dataset.page = i;
 
-        const warn = console.warn; console.warn = () => {};
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        console.warn = warn;
+          const canvas = document.createElement("canvas");
+          wrapper.appendChild(canvas);
+          container.appendChild(wrapper);
+
+          const unscaled = page.getViewport({ scale: 1, rotation });
+          const fitScale = Math.min(containerWidth / unscaled.width, 5);
+          if (i === 1) fitScaleRef.current = fitScale;
+          const s = zoom !== null ? zoom : fitScale;
+          const viewport = page.getViewport({ scale: s, rotation });
+
+          const ctx = canvas.getContext("2d");
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = viewport.width * dpr;
+          canvas.height = viewport.height * dpr;
+          canvas.style.width = `${viewport.width}px`;
+          canvas.style.height = `${viewport.height}px`;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          const warn = console.warn; console.warn = () => {};
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          console.warn = warn;
+        }
       }
 
+      if (obRef.current) obRef.current.disconnect();
       const pageEls = container.querySelectorAll("[data-page]");
-      if (pageEls.length > 0) {
-        obRef.current = new IntersectionObserver(
-          (entries) => {
-            let maxRatio = 0;
-            let best = visiblePage;
-            for (const entry of entries) {
-              if (entry.intersectionRatio > maxRatio) {
-                maxRatio = entry.intersectionRatio;
-                best = Number(entry.target.dataset.page);
-              }
+      obRef.current = new IntersectionObserver(
+        (entries) => {
+          let maxRatio = 0;
+          let best = 0;
+          for (const entry of entries) {
+            if (entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              best = Number(entry.target.dataset.page);
             }
-            if (best) setVisiblePage(best);
-          },
-          { threshold: [0, 0.25, 0.5, 0.75, 1] }
-        );
-        for (const el of pageEls) obRef.current.observe(el);
-      }
+          }
+          if (best) setVisiblePage(best);
+        },
+        { threshold: [0, 0.25, 0.5, 0.75, 1] }
+      );
+      for (const el of pageEls) obRef.current.observe(el);
 
       setDisplayZoom(zoom !== null ? Math.round((zoom !== null ? zoom : fitScaleRef.current) * 100) + "%" : "Fit");
     } catch (err) {
       if (err?.name !== "RenderingCancelledException") console.error("PDF render failed:", err);
     }
-  }, [zoom, rotation, visiblePage]);
+  }, [zoom, rotation]);
 
   useEffect(() => {
     if (!pdfRef.current || loading) return;
