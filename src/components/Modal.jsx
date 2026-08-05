@@ -7,7 +7,7 @@ const ProjectCardModal = ({ title, description, link }) => {
   return (
     <>
       <button
-        className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/90 transition-colors duration-200"
+        className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-soft hover:bg-soft-strong text-primary transition-colors duration-200"
         onClick={() => setIsOpen(true)}
       >
         <span className="text-sm">Details</span>
@@ -20,28 +20,28 @@ const ProjectCardModal = ({ title, description, link }) => {
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-lg bg-gray-900 p-6 text-white shadow-lg sm:p-8"
+            className="relative w-full max-w-md rounded-lg bg-elevated border border-edge p-6 text-primary sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="absolute top-4 right-4 rounded-md p-2 hover:bg-gray-800 transition-colors duration-200"
+              className="absolute top-4 right-4 rounded-md p-2 hover:bg-soft-strong transition-colors duration-200"
               onClick={() => setIsOpen(false)}
             >
               <Eye className="h-5 w-5" />
             </button>
             <h2 className="mb-4 text-2xl font-bold">{title}</h2>
-            <p className="mb-6 text-gray-400">{description}</p>
+            <p className="mb-6 text-secondary">{description}</p>
             <div className="flex justify-end space-x-4">
               <a
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-md bg-blue-600 px-4 py-2 font-medium hover:bg-blue-700 transition-colors duration-200"
+                className="rounded-md bg-primary px-4 py-2 font-medium text-invert-text hover:bg-invert-hover transition-colors duration-200"
               >
                 Live Demo <ExternalLink className="ml-2 inline-block h-5 w-5" />
               </a>
               <button
-                className="rounded-md bg-gray-800 px-4 py-2 font-medium hover:bg-gray-700 transition-colors duration-200"
+                className="rounded-md bg-soft-strong px-4 py-2 font-medium hover:bg-soft-strong transition-colors duration-200"
                 onClick={() => setIsOpen(false)}
               >
                 Close

@@ -13,15 +13,15 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#030014] flex items-center justify-center px-4">
+        <div className="min-h-screen bg-bg flex items-center justify-center px-4">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7] mb-4">
+            <h1 className="text-4xl font-bold text-primary mb-4">
               Something went wrong
             </h1>
-            <p className="text-gray-400 mb-6">An unexpected error occurred. Please refresh the page.</p>
+            <p className="text-secondary mb-6">An unexpected error occurred. Please refresh the page.</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white rounded-xl hover:scale-[1.02] transition-all"
+              className="px-6 py-3 bg-invert text-invert-text font-medium rounded-xl hover:bg-invert-hover transition-all"
             >
               Refresh Page
             </button>

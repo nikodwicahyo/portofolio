@@ -5,14 +5,14 @@ import { supabase } from '../supabase';
 
 const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
     <div 
-        className={`px-4 pt-4 pb-2 rounded-xl border transition-all group hover:shadow-lg hover:-translate-y-0.5 ${
+        className={`px-4 pt-4 pb-2 rounded-xl border transition-all group hover:-translate-y-0.5 ${
             isPinned 
-                ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30 hover:bg-gradient-to-r hover:from-indigo-500/15 hover:to-purple-500/15' 
-                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                ? 'bg-soft border-edge-strong' 
+                : 'bg-soft border-edge hover:bg-soft-strong'
         }`}
     >
         {isPinned && (
-            <div className="flex items-center gap-2 mb-3 text-indigo-400">
+            <div className="flex items-center gap-2 mb-3 text-primary">
                 <Pin className="w-4 h-4" />
                 <span className="text-xs font-medium uppercase tracking-wide">Pinned Comment by Admin</span>
             </div>
@@ -23,13 +23,13 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
                     src={comment.profile_image}
                     alt={`${comment.user_name}'s profile`}
                     className={`w-10 h-10 rounded-full object-cover border-2 flex-shrink-0  ${
-                        isPinned ? 'border-indigo-500/50' : 'border-indigo-500/30'
+                        isPinned ? 'border-edge-strong' : 'border-edge-strong'
                     }`}
                     loading="lazy"
                 />
             ) : (
-                <div className={`p-2 rounded-full text-indigo-400 group-hover:bg-indigo-500/30 transition-colors ${
-                    isPinned ? 'bg-indigo-500/30' : 'bg-indigo-500/20'
+                <div className={`p-2 rounded-full text-primary transition-colors ${
+                    isPinned ? 'bg-soft-strong' : 'bg-soft'
                 }`}>
                     <UserCircle2 className="w-5 h-5" />
                 </div>
@@ -38,16 +38,16 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
                 <div className="flex items-center justify-between gap-4 mb-2">
                     <div className="flex items-center gap-2">
                         <h4 className={`font-medium truncate ${
-                            isPinned ? 'text-indigo-200' : 'text-white'
+                            isPinned ? 'text-primary' : 'text-primary'
                         }`}>
                             {comment.user_name}
                         </h4>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                    <span className="text-xs text-muted whitespace-nowrap">
                         {formatDate(comment.created_at)}
                     </span>
                 </div>
-                <p className="text-gray-300 text-sm break-words leading-relaxed relative bottom-2">
+                <p className="text-primary text-sm break-words leading-relaxed relative bottom-2">
                     {comment.content}
                 </p>
             </div>
@@ -81,7 +81,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2" data-aos="fade-up" data-aos-duration="1000">
-                <label className="block text-sm font-medium text-white">
+                <label className="block text-sm font-medium text-primary">
                     Name <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -90,13 +90,13 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
                     onChange={(e) => setUserName(e.target.value)}
                      maxLength={15}
                     placeholder="Enter your name"
-                    className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    className="w-full p-3 rounded-xl bg-soft border border-edge text-primary placeholder-muted focus:outline-none focus:border-edge-strong focus:ring-2 focus:ring-edge-strong transition-all"
                     required
                 />
             </div>
 
             <div className="space-y-2" data-aos="fade-up" data-aos-duration="1200">
-                <label className="block text-sm font-medium text-white">
+                <label className="block text-sm font-medium text-primary">
                     Message <span className="text-red-400">*</span>
                 </label>
                 <textarea
@@ -106,7 +106,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
 
                     onChange={handleTextareaChange}
                     placeholder="Write your message here..."
-                    className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none min-h-[120px]"
+                    className="w-full p-4 rounded-xl bg-soft border border-edge text-primary placeholder-muted focus:outline-none focus:border-edge-strong focus:ring-2 focus:ring-edge-strong transition-all resize-none min-h-[120px]"
                     required
                 />
             </div>
@@ -115,9 +115,8 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
                 type="submit"
                 disabled={isSubmitting}
                 data-aos="fade-up" data-aos-duration="1000"
-                className="relative w-full h-12 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-xl font-medium text-white overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                className="relative w-full h-12 bg-invert text-invert-text rounded-xl font-medium overflow-hidden group transition-all duration-300 hover:bg-invert-hover active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
-                <div className="absolute inset-0 bg-white/20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300" />
                 <div className="relative flex items-center justify-center gap-2">
                     {isSubmitting ? (
                         <>
@@ -258,17 +257,17 @@ const Komentar = () => {
 
     return (
         <div
-            className="w-full bg-gradient-to-b from-white/10 to-white/5 rounded-2xl backdrop-blur-xl shadow-xl pb-4"
+            className="w-full bg-surface border border-edge rounded-2xl pb-4"
             data-aos="fade-up"
             data-aos-duration="1000"
         >
-            <div className="p-6 border-b border-white/10" data-aos="fade-down" data-aos-duration="800">
+            <div className="p-6 border-b border-edge" data-aos="fade-down" data-aos-duration="800">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-indigo-500/20">
-                        <MessageCircle className="w-6 h-6 text-indigo-400" />
+                    <div className="p-2 rounded-xl bg-soft-strong">
+                        <MessageCircle className="w-6 h-6 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white">
-                        Comments <span className="text-indigo-400">({totalComments})</span>
+                    <h3 className="text-xl font-semibold text-primary">
+                        Comments <span className="text-secondary">({totalComments})</span>
                     </h3>
                 </div>
             </div>
@@ -290,7 +289,7 @@ const Komentar = () => {
                     />
                 </div>
                 <div
-                    className="space-y-4 h-[480px] overflow-y-auto overflow-x-hidden custom-scrollbar pt-1 pr-1"
+                    className="space-y-4 h-[480px] overflow-y-auto overflow-x-hidden pt-1 pr-1"
                     data-aos="fade-up"
                     data-aos-delay="200"
                 >
@@ -306,8 +305,8 @@ const Komentar = () => {
                     ))}
                     {comments.length === 0 && pinnedComments.length === 0 ? (
                         <div className="text-center py-8" data-aos="fade-in">
-                            <UserCircle2 className="w-12 h-12 text-indigo-400 mx-auto mb-3 opacity-50" />
-                            <p className="text-gray-400">
+                            <UserCircle2 className="w-12 h-12 text-muted mx-auto mb-3 opacity-50" />
+                            <p className="text-secondary">
                                 No comments yet. Start the conversation!
                             </p>
                         </div>

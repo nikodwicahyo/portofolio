@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
+import useTheme from "../hooks/useTheme";
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("Home");
+    const { theme, toggleTheme } = useTheme();
     
     const navItems = [
         { href: "#Home", label: "Home" },
@@ -69,10 +71,10 @@ const Navbar = () => {
         <nav
             className={`fixed w-full top-0 z-50 transition-all duration-500 ${
                 isOpen
-                    ? "bg-[#030014]"
+                    ? "bg-bg"
                     : scrolled
-                    ? "bg-[#030014]/50 backdrop-blur-xl"
-                    : "bg-transparent"
+                    ? "bg-bg border-b border-edge"
+                    : "bg-transparent border-b border-transparent"
             }`}
         >
             <div className="mx-auto px-[5%] sm:px-[5%] lg:px-[10%]">
@@ -82,16 +84,17 @@ const Navbar = () => {
                         <a
                             href="#Home"
                             onClick={(e) => scrollToSection(e, "#Home")}
-                            className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-[#a855f7] to-[#6366f1] bg-clip-text text-transparent"
+                            className="flex items-center gap-2 text-lg font-semibold text-primary"
                         >
                             <img src="/Logo.png" alt="Logo" className="w-8 h-8 rounded-full" />
                             Niko Dwicahyo Widiyanto
                         </a>
                     </div>
         
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:block">
-                        <div className="ml-8 flex items-center space-x-8">
+                    {/* Right group: nav + theme toggle + mobile menu */}
+                    <div className="flex items-center gap-2">
+                        {/* Desktop Navigation */}
+                        <nav className="hidden md:flex items-center space-x-8">
                             {navItems.map((item) => (
                                 <a
                                     key={item.label}
@@ -102,14 +105,14 @@ const Navbar = () => {
                                     <span
                                         className={`relative z-10 transition-colors duration-300 ${
                                             activeSection === item.href.substring(1)
-                                                ? "bg-gradient-to-r from-[#6366f1] to-[#a855f7] bg-clip-text text-transparent font-semibold"
-                                                : "text-[#e2d3fd] group-hover:text-white"
+                                                ? "text-primary font-semibold"
+                                                : "text-secondary group-hover:text-primary"
                                         }`}
                                     >
                                         {item.label}
                                     </span>
                                     <span
-                                        className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] transform origin-left transition-transform duration-300 ${
+                                        className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary transform origin-left transition-transform duration-300 ${
                                             activeSection === item.href.substring(1)
                                                 ? "scale-x-100"
                                                 : "scale-x-0 group-hover:scale-x-100"
@@ -117,23 +120,38 @@ const Navbar = () => {
                                     />
                                 </a>
                             ))}
+                        </nav>
+
+                        {/* Theme Toggle */}
+                        <div className="flex-shrink-0">
+                            <button
+                                onClick={toggleTheme}
+                                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                                className="p-2 rounded-lg text-secondary hover:text-primary transition-colors duration-300"
+                            >
+                                {theme === "dark" ? (
+                                    <Sun className="w-5 h-5" />
+                                ) : (
+                                    <Moon className="w-5 h-5" />
+                                )}
+                            </button>
                         </div>
-                    </div>
-        
-                    {/* Mobile Menu Button */}
-                    <div className="md:hidden">
-                        <button
-                            onClick={() => setIsOpen(!isOpen)}
-                            className={`relative p-2 text-[#e2d3fd] hover:text-white transition-transform duration-300 ease-in-out transform ${
-                                isOpen ? "rotate-90 scale-125" : "rotate-0 scale-100"
-                            }`}
-                        >
-                            {isOpen ? (
-                                <X className="w-6 h-6" />
-                            ) : (
-                                <Menu className="w-6 h-6" />
-                            )}
-                        </button>
+
+                        {/* Mobile Menu Button */}
+                        <div className="md:hidden">
+                            <button
+                                onClick={() => setIsOpen(!isOpen)}
+                                className={`relative p-2 text-secondary hover:text-primary transition-transform duration-300 ease-in-out transform ${
+                                    isOpen ? "rotate-90 scale-125" : "rotate-0 scale-100"
+                                }`}
+                            >
+                                {isOpen ? (
+                                    <X className="w-6 h-6" />
+                                ) : (
+                                    <Menu className="w-6 h-6" />
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -146,7 +164,7 @@ const Navbar = () => {
                         : "max-h-0 opacity-0 overflow-hidden"
                 }`}
             >
-                <div className="px-4 py-6 space-y-4">
+                <div className="px-4 py-6 space-y-4 border-t border-edge">
                     {navItems.map((item, index) => (
                         <a
                             key={item.label}
@@ -154,8 +172,8 @@ const Navbar = () => {
                             onClick={(e) => scrollToSection(e, item.href)}
                             className={`block px-4 py-3 text-lg font-medium transition-all duration-300 ease ${
                                 activeSection === item.href.substring(1)
-                                    ? "bg-gradient-to-r from-[#6366f1] to-[#a855f7] bg-clip-text text-transparent font-semibold"
-                                    : "text-[#e2d3fd] hover:text-white"
+                                    ? "text-primary font-semibold"
+                                    : "text-secondary hover:text-primary"
                             }`}
                             style={{
                                 transitionDelay: `${index * 100}ms`,

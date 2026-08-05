@@ -2,46 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens — dark is the implicit default, html.light overrides */
+:root {
+	--bg: #09090b;
+	--surface: #131316;
+	--elevated: #18181b;
+	--sidebar: #0f0f12;
+	--edge: rgba(255, 255, 255, 0.1);
+	--edge-strong: rgba(255, 255, 255, 0.2);
+	--soft: rgba(255, 255, 255, 0.05);
+	--soft-strong: rgba(255, 255, 255, 0.1);
+	--primary: #fafafa;
+	--secondary: #a1a1aa;
+	--muted: #71717a;
+	--faint: #52525b;
+	--invert: #ffffff;
+	--invert-text: #09090b;
+	--invert-hover: #e4e4e7;
+	--github: #ffffff;
+	--grid: #ffffff08;
+	--glow: rgba(255, 255, 255, 0.035);
+	--scrollbar: rgba(255, 255, 255, 0.2);
+	--scrollbar-track: rgba(9, 9, 11, 0.4);
+	--scrollbar-thumb: rgba(255, 255, 255, 0.18);
+	--scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
+	--scrollbar-thumb-active: rgba(255, 255, 255, 0.4);
+	--selection-bg: rgba(255, 255, 255, 0.2);
+}
+
+html.light {
+	--bg: #fafafa;
+	--surface: #ffffff;
+	--elevated: #ffffff;
+	--sidebar: #f4f4f5;
+	--edge: rgba(0, 0, 0, 0.1);
+	--edge-strong: rgba(0, 0, 0, 0.2);
+	--soft: rgba(0, 0, 0, 0.05);
+	--soft-strong: rgba(0, 0, 0, 0.08);
+	--primary: #18181b;
+	--secondary: #52525b;
+	--muted: #71717a;
+	--faint: #a1a1aa;
+	--invert: #18181b;
+	--invert-text: #fafafa;
+	--invert-hover: #27272a;
+	--github: #18181b;
+	--grid: #00000008;
+	--glow: rgba(0, 0, 0, 0.03);
+	--scrollbar: rgba(0, 0, 0, 0.25);
+	--scrollbar-track: rgba(250, 250, 250, 0.4);
+	--scrollbar-thumb: rgba(0, 0, 0, 0.18);
+	--scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
+	--scrollbar-thumb-active: rgba(0, 0, 0, 0.4);
+	--selection-bg: rgba(0, 0, 0, 0.2);
+}
 
 * {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-	  font-family: "Poppins", system-ui, sans-serif;
+	  font-family: "Inter", system-ui, sans-serif;
 	scroll-behavior: smooth;
 	scrollbar-width: thin;
-	scrollbar-color: rgba(99, 102, 241, 0.3) rgba(12, 5, 53, 0.356);
+	scrollbar-color: var(--scrollbar) var(--scrollbar-track);
 }
 
 html,
 body {
 	overflow-x: hidden;
-	background: #030014;
+	background: var(--bg);
 	scroll-behavior: smooth !important;
 }
 
-
-@keyframes blob {
-	0%,
-	100% {
-		transform: translateY(0);
-	}
-	50% {
-		transform: translateY(-20px);
-	}
-}
-
-.animate-blob {
-	animation: blob 8s infinite;
-}
-
-.animation-delay-2000 {
-	animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-	animation-delay: 4s;
-}
 
 @keyframes shimmer {
   0% {
@@ -55,9 +87,9 @@ body {
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 75%
+    var(--soft) 25%,
+    var(--soft-strong) 50%,
+    var(--soft) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -101,45 +133,28 @@ body {
 
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+	width: 10px;
+	height: 10px;
 	background-color: transparent;
   }
   
   ::-webkit-scrollbar-track {
-	background: rgba(3, 0, 20, 0.4);
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
-	border: 1px solid rgba(99, 102, 241, 0.1);
+	background: var(--scrollbar-track);
   }
   
   ::-webkit-scrollbar-thumb {
-	background: rgba(99, 102, 241, 0.3);
-	backdrop-filter: blur(4px);
-	-webkit-backdrop-filter: blur(4px);
+	background: var(--scrollbar-thumb);
 	border-radius: 20px;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	box-shadow: 
-	  inset 0 0 20px rgba(168, 85, 247, 0.2),
-	  0 0 10px rgba(99, 102, 241, 0.2);
-	transition: all 0.3s ease;
+	border: 2px solid var(--bg);
+	transition: background 0.3s ease;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-	background: rgba(99, 102, 241, 0.5);
-	border: 1px solid rgba(168, 85, 247, 0.3);
-	box-shadow: 
-	  inset 0 0 30px rgba(168, 85, 247, 0.3),
-	  0 0 15px rgba(99, 102, 241, 0.3);
+	background: var(--scrollbar-thumb-hover);
   }
   
-  /* When scrollbar is in active/clicked state */
   ::-webkit-scrollbar-thumb:active {
-	background: rgba(99, 102, 241, 0.6);
-	border: 1px solid rgba(168, 85, 247, 0.4);
-	box-shadow: 
-	  inset 0 0 40px rgba(168, 85, 247, 0.4),
-	  0 0 20px rgba(99, 102, 241, 0.4);
+	background: var(--scrollbar-thumb-active);
   }
   
   ::-webkit-scrollbar-corner {
@@ -152,4 +167,29 @@ body {
 }
 .animate-shine {
   animation: shine 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* MUI components inherit Inter instead of defaulting to Roboto/Helvetica */
+.MuiPaper-root,
+.MuiTypography-root,
+.MuiButtonBase-root,
+.MuiInputBase-root,
+.MuiMenuItem-root,
+.MuiTab-root,
+.MuiTabs-root {
+  font-family: "Inter", system-ui, sans-serif !important;
+}
+
+/* Neutral text selection */
+::selection {
+  background: var(--selection-bg);
+  color: var(--primary);
 }

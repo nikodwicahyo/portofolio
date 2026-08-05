@@ -49,7 +49,7 @@ const CVViewerButton = () => {
         disabled={disabled}
         data-aos="fade-up"
         data-aos-duration="800"
-        className="w-full lg:w-auto sm:px-6 py-2 sm:py-3 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white font-medium transition-all duration-300 hover:scale-105 flex items-center justify-center lg:justify-start gap-2 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="w-full lg:w-auto sm:px-6 py-2 sm:py-3 rounded-lg bg-invert text-invert-text font-medium transition-all duration-300 hover:bg-invert-hover flex items-center justify-center lg:justify-start gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-invert"
       >
         {loading ? (
           <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />

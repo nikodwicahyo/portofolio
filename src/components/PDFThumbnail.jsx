@@ -120,13 +120,13 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
 
   if (error) {
     return (
-      <div ref={ref} className={`w-full aspect-[16/11.5] bg-white/5 flex flex-col items-center justify-center gap-1.5 ${className}`} style={style}>
+      <div ref={ref} className={`w-full aspect-[16/11.5] bg-soft flex flex-col items-center justify-center gap-1.5 ${className}`} style={style}>
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
           <line x1="9" y1="15" x2="15" y2="15" />
         </svg>
-        <span className="text-xs text-gray-500">Failed to load</span>
+        <span className="text-xs text-muted">Failed to load</span>
       </div>
     );
   }
@@ -134,7 +134,7 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
   return (
     <div ref={ref} className={`w-full aspect-[16/11.5] ${className}`} style={style}>
       {loading || !thumbnail ? (
-        <div className="w-full h-full bg-white/5 animate-pulse" />
+        <div className="w-full h-full bg-soft animate-pulse" />
       ) : (
         <img
           src={thumbnail}

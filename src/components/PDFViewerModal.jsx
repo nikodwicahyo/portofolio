@@ -293,27 +293,27 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       <Box
         sx={{
           position: "relative", width: "95vw", height: "95vh", maxWidth: "100%", maxHeight: "100%",
-          bgcolor: "#1a1a2e", borderRadius: 2, overflow: "hidden", display: "flex", flexDirection: "column",
+          bgcolor: "var(--elevated)", borderRadius: 2, overflow: "hidden", display: "flex", flexDirection: "column",
         }}
       >
         <Box
           sx={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            px: 3, py: 2, bgcolor: "#0a0a1a",
-            borderBottom: "1px solid rgba(255,255,255,0.1)", shrink: 0,
+            px: 3, py: 2, bgcolor: "var(--surface)",
+            borderBottom: "1px solid var(--edge)", shrink: 0,
           }}
         >
-          <Typography variant="h6" sx={{ color: "white", fontWeight: 600 }} noWrap>
+          <Typography variant="h6" sx={{ color: "var(--primary)", fontWeight: 600 }} noWrap>
             {title || "PDF Viewer"}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {showDownload && (
               <IconButton onClick={handleDownload} title="Download PDF"
-                sx={{ color: "white", bgcolor: "rgba(255,255,255,0.1)", "&:hover": { bgcolor: "rgba(255,255,255,0.2)" } }} size="large"
+                sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" } }} size="large"
               ><DownloadIcon /></IconButton>
             )}
             <IconButton onClick={onClose}
-              sx={{ color: "white", bgcolor: "rgba(255,255,255,0.1)", "&:hover": { bgcolor: "rgba(255,255,255,0.2)" } }} size="large"
+              sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" } }} size="large"
             ><CloseIcon /></IconButton>
           </Box>
         </Box>
@@ -322,8 +322,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           {isDesktop && thumbnails.length > 0 && (
             <Box
               sx={{
-                width: 180, shrink: 0, overflow: "auto", bgcolor: "#0a0a1a",
-                borderRight: "1px solid rgba(255,255,255,0.08)",
+                width: 180, shrink: 0, overflow: "auto", bgcolor: "var(--surface)",
+                borderRight: "1px solid var(--edge)",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2, px: 1,
               }}
             >
@@ -333,14 +333,14 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                   onClick={() => scrollToPage(i + 1)}
                   sx={{
                     width: "100%", cursor: "pointer", borderRadius: 1, overflow: "hidden",
-                    border: visiblePage === i + 1 ? "2px solid #6366f1" : "2px solid transparent",
+                    border: visiblePage === i + 1 ? "2px solid var(--primary)" : "2px solid transparent",
                     opacity: visiblePage === i + 1 ? 1 : 0.55,
                     transition: "all 0.2s",
-                    "&:hover": { opacity: 1, borderColor: visiblePage === i + 1 ? "#6366f1" : "rgba(255,255,255,0.2)" },
+                    "&:hover": { opacity: 1, borderColor: visiblePage === i + 1 ? "var(--primary)" : "var(--edge-strong)" },
                   }}
                 >
                   <img src={src} alt={`Page ${i + 1}`} style={{ width: "100%", display: "block" }} />
-                  <Typography sx={{ textAlign: "center", fontSize: 11, color: "gray", py: 0.3 }}>
+                  <Typography sx={{ textAlign: "center", fontSize: 11, color: "var(--secondary)", py: 0.3 }}>
                     {i + 1}
                   </Typography>
                 </Box>
@@ -350,15 +350,15 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
 
           <Box
             ref={containerRef}
-            sx={{ flex: 1, overflow: "auto", bgcolor: "#0d0d1a", position: "relative" }}
+            sx={{ flex: 1, overflow: "auto", bgcolor: "var(--sidebar)", position: "relative" }}
           >
             {loading ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                <Typography sx={{ color: "gray" }}>Loading PDF...</Typography>
+                <Typography sx={{ color: "var(--secondary)" }}>Loading PDF...</Typography>
               </Box>
             ) : numPages === 0 ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                <Typography sx={{ color: "gray" }}>Failed to load PDF</Typography>
+                <Typography sx={{ color: "var(--secondary)" }}>Failed to load PDF</Typography>
               </Box>
             ) : (
               <Box
@@ -372,21 +372,21 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
         <Box
           sx={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            px: 3, py: 1, bgcolor: "#0a0a1a",
-            borderTop: "1px solid rgba(255,255,255,0.1)",
+            px: 3, py: 1, bgcolor: "var(--surface)",
+            borderTop: "1px solid var(--edge)",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <IconButton size="small" onClick={handleZoomOut} title="Zoom Out (Ctrl+-)"
-              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+              sx={{ color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" } }}
             ><ZoomOutIcon fontSize="small" /></IconButton>
 
             <Box
               onClick={(e) => setAnchorEl(e.currentTarget)}
               sx={{
                 display: "flex", alignItems: "center", gap: 0.3, cursor: "pointer",
-                color: "white", fontSize: 13, minWidth: 40, textAlign: "center", px: 1, py: 0.3, borderRadius: 1,
-                "&:hover": { bgcolor: "rgba(255,255,255,0.1)", color: "#a78bfa" },
+                color: "var(--primary)", fontSize: 13, minWidth: 40, textAlign: "center", px: 1, py: 0.3, borderRadius: 1,
+                "&:hover": { bgcolor: "var(--soft-strong)", color: "var(--primary)" },
               }}
             >
               <span>{displayZoom}</span>
@@ -397,7 +397,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               open={Boolean(anchorEl)}
               onClose={() => setAnchorEl(null)}
               PaperProps={{
-                sx: { bgcolor: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", mt: 0.5 },
+                sx: { bgcolor: "var(--elevated)", border: "1px solid var(--edge)", mt: 0.5 },
               }}
             >
               {ZOOM_PRESETS.map((p) => (
@@ -405,23 +405,23 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                   key={p.label}
                   onClick={() => handleZoomPreset(p.value)}
                   selected={zoom === p.value}
-                  sx={{ color: zoom === p.value ? "#a78bfa" : "white", fontSize: 13, "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
+                  sx={{ color: "var(--primary)", fontSize: 13, "&:hover": { bgcolor: "var(--soft-strong)" } }}
                 >{p.label}</MenuItem>
               ))}
             </Menu>
 
             <IconButton size="small" onClick={handleZoomIn} title="Zoom In (Ctrl++)"
-              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+              sx={{ color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" } }}
             ><ZoomInIcon fontSize="small" /></IconButton>
             <IconButton size="small" onClick={() => setZoom(null)} title="Fit width (Ctrl+0)"
-              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" }, ml: 0.5 }}
+              sx={{ color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" }, ml: 0.5 }}
             ><FitScreenIcon fontSize="small" /></IconButton>
             <IconButton size="small" onClick={() => setRotation(r => (r + 90) % 360)} title="Rotate (R)"
-              sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" }, ml: 0.5 }}
+              sx={{ color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" }, ml: 0.5 }}
             ><RotateRightIcon fontSize="small" /></IconButton>
           </Box>
 
-          <Typography sx={{ color: "white", fontSize: 14 }}>
+          <Typography sx={{ color: "var(--primary)", fontSize: 14 }}>
             Page {visiblePage} of {numPages || "—"}
           </Typography>
         </Box>

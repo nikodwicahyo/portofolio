@@ -8,11 +8,11 @@ import PDFViewerModal from "../../components/PDFViewerModal";
 import ImageViewerModal from "../../components/ImageViewerModal";
 
 const ShimmerBlock = ({ className = "" }) => (
-  <div className={`relative overflow-hidden bg-white/[0.06] ${className}`}>
+  <div className={`relative overflow-hidden bg-soft ${className}`}>
     <div
       className="absolute inset-0"
       style={{
-        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
+        background: "linear-gradient(90deg, transparent 0%, var(--soft-strong) 50%, transparent 100%)",
         backgroundSize: "200% 100%",
         animation: "shimmer 1.5s infinite",
       }}
@@ -23,9 +23,8 @@ const ShimmerBlock = ({ className = "" }) => (
 const ITEMS_PER_PAGE = 8
 
 const Card = ({ children, className = '' }) => (
-  <div className={`relative group ${className}`}>
-    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10 group-hover:opacity-25 transition duration-500" />
-    <div className="relative bg-white/5 backdrop-blur-xl border border-white/12 rounded-2xl h-full">
+  <div className={`relative ${className}`}>
+    <div className="relative bg-surface border border-edge rounded-2xl h-full">
       {children}
     </div>
   </div>
@@ -49,10 +48,9 @@ const CertCard = ({ cert, onDelete }) => {
   return (
     <>
       <div className="relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10 group-hover:opacity-30 transition duration-500" />
-        <div className="relative bg-white/5 border border-white/12 rounded-2xl overflow-hidden">
+        <div className="relative bg-surface border border-edge rounded-2xl overflow-hidden">
           {!imgLoaded && (
-            <div className="w-full aspect-[16/11.5] bg-white/5 animate-pulse" />
+            <div className="w-full aspect-[16/11.5] bg-soft animate-pulse" />
           )}
 
           {isPdf ? (
@@ -220,10 +218,10 @@ export default function Certificates() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6366f1',
+      cancelButtonColor: 'var(--soft-strong)', cancelButtonTextColor: 'var(--primary)',
       confirmButtonText: 'Delete',
-      background: '#030014',
-      color: '#fff',
+      background: 'var(--elevated)',
+      color: 'var(--primary)',
     });
     if (!result.isConfirmed) return
 
@@ -266,15 +264,12 @@ export default function Certificates() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-xl blur opacity-50" />
-          <div className="relative w-9 h-9 bg-[#030014] rounded-xl border border-white/15 flex items-center justify-center">
-            <Award className="w-4 h-4 text-indigo-400" />
-          </div>
+        <div className="relative w-9 h-9 bg-soft rounded-xl border border-edge flex items-center justify-center">
+          <Award className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Certificates</h1>
-          <p className="text-gray-500 text-xs">
+          <h1 className="text-xl sm:text-2xl font-bold text-primary">Certificates</h1>
+          <p className="text-muted text-xs">
             {loading ? 'Loading...' : `${certs.length} certificates total`}
           </p>
         </div>
@@ -283,8 +278,8 @@ export default function Certificates() {
       {/* Upload Card */}
       <Card>
         <div className="p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Plus className="w-4 h-4 text-indigo-400" /> Upload Certificate
+          <h2 className="text-sm font-semibold text-primary flex items-center gap-2">
+            <Plus className="w-4 h-4 text-secondary" /> Upload Certificate
           </h2>
 
           <label
@@ -292,7 +287,7 @@ export default function Certificates() {
             onDragLeave={() => setDragOver(false)}
             onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
             className={`flex flex-col items-center justify-center w-full min-h-[160px] rounded-xl border-2 border-dashed cursor-pointer transition-all duration-300 ${
-              dragOver ? 'border-indigo-400/60 bg-indigo-500/10' : 'border-white/12 bg-white/4 hover:border-indigo-500/35 hover:bg-white/7'
+              dragOver ? 'border-edge-strong bg-soft-strong' : 'border-edge bg-soft hover:border-edge-strong hover:bg-soft-strong'
             }`}
           >
             {preview ? (
@@ -302,15 +297,15 @@ export default function Certificates() {
                 <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                   <FileText className="w-7 h-7 text-red-400" />
                 </div>
-                <p className="text-xs text-gray-400 truncate max-w-[200px]">{file.name}</p>
+                <p className="text-xs text-secondary truncate max-w-[200px]">{file.name}</p>
               </div>
             ) : (
               <div className="text-center space-y-2 p-6">
-                <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto">
-                  <ImageIcon className="w-5 h-5 text-indigo-400" />
+                <div className="w-11 h-11 rounded-full bg-soft-strong border border-edge-strong flex items-center justify-center mx-auto">
+                  <ImageIcon className="w-5 h-5 text-primary" />
                 </div>
-                <p className="text-sm text-gray-300">Drag & drop or click to upload</p>
-                <p className="text-xs text-gray-600">PNG, JPG, WEBP, PDF supported</p>
+                <p className="text-sm text-primary">Drag & drop or click to upload</p>
+                <p className="text-xs text-faint">PNG, JPG, WEBP, PDF supported</p>
               </div>
             )}
             <input type="file" accept="image/*,.pdf" onChange={e => handleFile(e.target.files[0])} className="hidden" />
@@ -318,17 +313,16 @@ export default function Certificates() {
 
           {file && (
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-gray-400 truncate flex-1">{file.name}</p>
+              <p className="text-xs text-secondary truncate flex-1">{file.name}</p>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => { setFile(null); setPreview(null) }}
-                  className="px-3 py-1.5 rounded-xl border border-white/10 text-gray-500 hover:text-white text-xs transition-colors">
+                  className="px-3 py-1.5 rounded-xl border border-edge text-muted hover:text-primary text-xs transition-colors">
                   Clear
                 </button>
                 <button onClick={uploadCertificate} disabled={uploading} className="relative group/u">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#4f52c9] to-[#8644c5] rounded-xl opacity-60 blur group-hover/u:opacity-100 transition duration-300" />
-                  <div className="relative flex items-center gap-2 px-4 py-1.5 bg-[#030014] rounded-xl border border-white/10">
-                    {uploading ? <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Upload className="w-3.5 h-3.5 text-indigo-400" />}
-                    <span className="text-xs text-gray-200">{uploading ? 'Uploading...' : 'Upload'}</span>
+                  <div className="relative flex items-center gap-2 px-4 py-1.5 bg-invert text-invert-text rounded-xl hover:bg-invert-hover transition-colors">
+                    {uploading ? <div className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    <span className="text-xs font-medium">{uploading ? 'Uploading...' : 'Upload'}</span>
                   </div>
                 </button>
               </div>
@@ -342,8 +336,7 @@ export default function Certificates() {
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
             <div key={i} className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-2xl blur opacity-10" />
-              <div className="relative bg-white/5 border border-white/12 rounded-2xl overflow-hidden">
+              <div className="relative bg-surface border border-edge rounded-2xl overflow-hidden">
                 <ShimmerBlock className="w-full aspect-[16/11.5] rounded-none" />
               </div>
             </div>
@@ -352,8 +345,8 @@ export default function Certificates() {
       ) : certs.length === 0 ? (
         <Card>
           <div className="p-16 text-center">
-            <Award className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">No certificates yet.</p>
+            <Award className="w-10 h-10 text-faint mx-auto mb-3" />
+            <p className="text-muted text-sm">No certificates yet.</p>
           </div>
         </Card>
       ) : (
@@ -370,7 +363,7 @@ export default function Certificates() {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-soft border border-edge text-secondary hover:text-primary hover:bg-soft-strong disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -381,8 +374,8 @@ export default function Certificates() {
                   onClick={() => goToPage(page)}
                   className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                     currentPage === page
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+                      ? 'bg-invert text-invert-text'
+                      : 'bg-soft border border-edge text-secondary hover:text-primary hover:bg-soft-strong'
                   }`}
                 >
                   {page}
@@ -392,7 +385,7 @@ export default function Certificates() {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-soft border border-edge text-secondary hover:text-primary hover:bg-soft-strong disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

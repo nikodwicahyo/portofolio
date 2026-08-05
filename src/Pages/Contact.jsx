@@ -20,7 +20,7 @@ const ContactPage = () => {
       Swal.fire({
         icon: 'error', title: 'Configuration Error',
         text: 'Contact form is not configured. Please try again later.',
-        confirmButtonColor: '#6366f1', background: '#030014', color: '#fff',
+        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)',
       });
       return;
     }
@@ -29,6 +29,8 @@ const ContactPage = () => {
       title: 'Sending Message...',
       html: 'Please wait while we send your message',
       allowOutsideClick: false,
+      background: 'var(--elevated)',
+      color: 'var(--primary)',
       didOpen: () => {
         Swal.showLoading();
       }
@@ -47,7 +49,9 @@ const ContactPage = () => {
         title: 'Success!',
         text: 'Your message has been sent successfully!',
         icon: 'success',
-        confirmButtonColor: '#6366f1',
+        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+        background: 'var(--elevated)',
+        color: 'var(--primary)',
         timer: 2000,
         timerProgressBar: true
       });
@@ -63,7 +67,9 @@ const ContactPage = () => {
         title: 'Failed!',
         text: message,
         icon: 'error',
-        confirmButtonColor: '#6366f1'
+        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+        background: 'var(--elevated)',
+        color: 'var(--primary)'
       });
     }
   };
@@ -74,25 +80,14 @@ const ContactPage = () => {
         <h2
           data-aos="fade-down"
           data-aos-duration="1000"
-          className="inline-block text-3xl md:text-5xl font-bold text-center mx-auto text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]"
+          className="inline-block text-3xl md:text-5xl font-bold text-center mx-auto text-primary"
         >
-          <span
-            style={{
-              color: "#6366f1",
-              backgroundImage:
-                "linear-gradient(45deg, #6366f1 10%, #a855f7 93%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            Contact Me
-          </span>
+          Contact Me
         </h2>
         <p
           data-aos="fade-up"
           data-aos-duration="1100"
-          className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base mt-2"
+          className="text-secondary max-w-2xl mx-auto text-sm md:text-base mt-2"
         >
           Have a question? Send me a message, and I’ll get back to you right away.
         </p>
@@ -104,19 +99,18 @@ const ContactPage = () => {
       >
         <div className="container px-[1%] grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-[45%_55%] 2xl:grid-cols-[35%_65%] gap-12" >
           <div
-        
-            className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-5 py-10 sm:p-10 transform transition-all duration-500 hover:shadow-[#6366f1]/10"
+            className="bg-surface rounded-3xl border border-edge p-5 py-10 sm:p-10 transition-all duration-500 hover:border-edge-strong"
           >
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h2 className="text-4xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]">
+                <h2 className="text-4xl font-bold mb-3 text-primary">
                   Hire Me
                 </h2>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-secondary">
                   Let's build something extraordinary with intelligent AI solutions, I'm ready to deliver. Send me an email below, and let's discuss.
                 </p>
               </div>
-              <Share2 className="w-10 h-10 text-[#6366f1] opacity-50" />
+              <Share2 className="w-10 h-10 text-faint" />
             </div>
 
             <form 
@@ -128,13 +122,13 @@ const ContactPage = () => {
                 data-aos-delay="100"
                 className="relative group"
               >
-                <User className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
+                <User className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
                   placeholder="Your Name"
                   {...register('name', { required: 'Name is required' })}
                   disabled={isSubmitting}
-                  className="w-full p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 disabled:opacity-50"
+                  className="w-full p-4 pl-12 bg-soft rounded-xl border border-edge placeholder-muted text-primary focus:outline-none focus:ring-2 focus:ring-edge-strong focus:border-edge-strong transition-all duration-300 hover:border-edge-strong disabled:opacity-50"
                 />
                 {errors.name && (
                   <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>
@@ -145,7 +139,7 @@ const ContactPage = () => {
                 data-aos-delay="200"
                 className="relative group"
               >
-                <Mail className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
+                <Mail className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <input
                   type="email"
                   placeholder="Your Email"
@@ -157,7 +151,7 @@ const ContactPage = () => {
                     },
                   })}
                   disabled={isSubmitting}
-                  className="w-full p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 disabled:opacity-50"
+                  className="w-full p-4 pl-12 bg-soft rounded-xl border border-edge placeholder-muted text-primary focus:outline-none focus:ring-2 focus:ring-edge-strong focus:border-edge-strong transition-all duration-300 hover:border-edge-strong disabled:opacity-50"
                 />
                 {errors.email && (
                   <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>
@@ -168,7 +162,7 @@ const ContactPage = () => {
                 data-aos-delay="300"
                 className="relative group"
               >
-                <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-[#6366f1] transition-colors" />
+                <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <textarea
                   placeholder="Your Message"
                   {...register('message', {
@@ -179,7 +173,7 @@ const ContactPage = () => {
                     },
                   })}
                   disabled={isSubmitting}
-                  className="w-full resize-none p-4 pl-12 bg-white/10 rounded-xl border border-white/20 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/30 transition-all duration-300 hover:border-[#6366f1]/30 h-[9.9rem] disabled:opacity-50"
+                  className="w-full resize-none p-4 pl-12 bg-soft rounded-xl border border-edge placeholder-muted text-primary focus:outline-none focus:ring-2 focus:ring-edge-strong focus:border-edge-strong transition-all duration-300 hover:border-edge-strong h-[9.9rem] disabled:opacity-50"
                 />
                 {errors.message && (
                   <p className="text-red-400 text-xs mt-1">{errors.message.message}</p>
@@ -190,19 +184,19 @@ const ContactPage = () => {
                 data-aos-delay="400"
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#6366f1]/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full bg-invert text-invert-text py-4 rounded-xl font-semibold transition-all duration-300 hover:bg-invert-hover active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <Send className="w-5 h-5" />
                 {isSubmitting ? 'Sending...' : 'Send Message'}
               </button>
             </form>
 
-            <div className="mt-10 pt-6 border-t border-white/10 flex justify-center space-x-6">
+            <div className="mt-10 pt-6 border-t border-edge flex justify-center space-x-6">
               <SocialLinks />
             </div>
           </div>
 
-          <div className="  bg-white/5 backdrop-blur-xl rounded-3xl p-3 py-3 md:p-10 md:py-8 shadow-2xl transform transition-all duration-500 hover:shadow-[#6366f1]/10">
+          <div className="bg-surface rounded-3xl p-3 py-3 md:p-10 md:py-8 border border-edge transition-all duration-500 hover:border-edge-strong">
             <Komentar />
           </div>
         </div>
