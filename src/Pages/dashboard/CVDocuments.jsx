@@ -39,21 +39,21 @@ export default function CVDocuments() {
   const [openPdf, setOpenPdf] = useState(false);
 
 
-  const fetchCV = useCallback(async (force = false) => {
-    const cached = localStorage.getItem("dashboard_cv_ts")
-    if (!force && cached && Date.now() - Number(cached) < 300000) {
-      return
-    }
+  const fetchCV = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("cv_documents")
-      .select("id,file_data,filename,created_at,updated_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setCv(data || null);
-    setLoading(false);
-    try { localStorage.setItem("dashboard_cv_ts", String(Date.now())); } catch {}
+    try {
+      const { data } = await supabase
+        .from("cv_documents")
+        .select("id,file_data,filename,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setCv(data || null);
+    } catch (err) {
+      console.error("Failed to fetch CV:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function CVDocuments() {
       setFile(null);
       setDisplayName("");
       setPreview(null);
-      fetchCV(true);
+      fetchCV();
       notifyPortfolioChanged();
     } catch (err) {
       console.error('Upload failed:', err);
@@ -163,7 +163,7 @@ export default function CVDocuments() {
     setCv(null);
     setFile(null);
     setPreview(null);
-    fetchCV(true);
+    fetchCV();
     notifyPortfolioChanged();
   };
 
