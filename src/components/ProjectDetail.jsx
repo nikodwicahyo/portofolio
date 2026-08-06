@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { supabase } from "../supabase";
-import { toSlug } from "../utils/slug";
+import { normalizeSlug, toSlug } from "../utils/slug";
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 
@@ -143,7 +143,8 @@ const ProjectDetails = () => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const findProject = useCallback((projects) => {
-    return projects.find((p) => toSlug(p.title) === slug);
+    const target = normalizeSlug(slug);
+    return projects.find((p) => toSlug(p.title) === target);
   }, [slug]);
 
   const goBack = () => {
