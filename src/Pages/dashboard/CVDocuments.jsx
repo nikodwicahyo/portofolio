@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { isBase64DataUrl } from "../../utils/fileType";
 import { FileText, Upload, Trash2, Plus, Eye } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -38,9 +39,9 @@ export default function CVDocuments() {
   const [openPdf, setOpenPdf] = useState(false);
 
 
-  const fetchCV = useCallback(async () => {
+  const fetchCV = useCallback(async (force = false) => {
     const cached = localStorage.getItem("dashboard_cv_ts")
-    if (cached && Date.now() - Number(cached) < 300000) {
+    if (!force && cached && Date.now() - Number(cached) < 300000) {
       return
     }
     setLoading(true);
@@ -122,7 +123,8 @@ export default function CVDocuments() {
       setFile(null);
       setDisplayName("");
       setPreview(null);
-      fetchCV();
+      fetchCV(true);
+      notifyPortfolioChanged();
     } catch (err) {
       console.error('Upload failed:', err);
     } finally {
@@ -162,7 +164,8 @@ export default function CVDocuments() {
     setCv(null);
     setFile(null);
     setPreview(null);
-    fetchCV();
+    fetchCV(true);
+    notifyPortfolioChanged();
   };
 
   const formatDate = (dateStr) => {

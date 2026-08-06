@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import {
   Plus,
   Trash2,
@@ -243,9 +244,9 @@ export default function TechStack() {
   const [editItem, setEditItem] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const fetchItems = async () => {
+  const fetchItems = async (force = false) => {
     const raw = localStorage.getItem("dashboard_tech_stacks_ts");
-    if (raw && Date.now() - Number(raw) < 300000) return;
+    if (!force && raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("tech_stacks")
@@ -309,7 +310,8 @@ export default function TechStack() {
     });
     setShowCreate(false);
     setUploading(false);
-    fetchItems();
+    fetchItems(true);
+    notifyPortfolioChanged();
   };
 
   const handleEdit = async (form, file) => {
@@ -363,7 +365,8 @@ export default function TechStack() {
       .eq("id", editItem.id);
     setEditItem(null);
     setUploading(false);
-    fetchItems();
+    fetchItems(true);
+    notifyPortfolioChanged();
   };
 
   const deleteItem = async (id) => {
@@ -380,7 +383,8 @@ export default function TechStack() {
     });
     if (!result.isConfirmed) return;
     await supabase.from("tech_stacks").delete().eq("id", id);
-    fetchItems();
+    fetchItems(true);
+    notifyPortfolioChanged();
   };
 
   return (

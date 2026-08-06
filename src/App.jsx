@@ -16,6 +16,7 @@ import Dashboard from "./Pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { prefetchPortfolioData } from "./utils/portfolioPrefetch";
+import { initRealtimeSync } from "./utils/realtimeSync";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
 const ContactPage = lazy(() => import("./Pages/Contact"));
@@ -74,10 +75,13 @@ const ProjectPageLayout = () => (
 );
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return sessionStorage.getItem("welcomeShown") !== "1"; } catch { return true; }
+  });
   const location = useLocation();
 
   useEffect(() => {
+    initRealtimeSync();
     AOS.init({ once: false, offset: 10 });
     const onResize = () => AOS.refresh();
     window.addEventListener("resize", onResize);
@@ -85,7 +89,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!showWelcome) prefetchPortfolioData();
+    if (!showWelcome) {
+      try { sessionStorage.setItem("welcomeShown", "1"); } catch {}
+      prefetchPortfolioData();
+    }
   }, [showWelcome]);
 
   return (

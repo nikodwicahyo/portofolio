@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
+import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 import { FileText, Loader2 } from "lucide-react";
 import PDFViewerModal from "./PDFViewerModal";
 
@@ -10,10 +11,25 @@ const CVViewerButton = () => {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+
+    const applyCv = (data) => {
+      if (cancelled) return;
+      setCv(data || null);
+      setLoading(false);
+      if (data) {
+        try { localStorage.setItem("public_cv", JSON.stringify({ data, ts: Date.now() })); } catch {}
+      }
+    };
+
     const cached = localStorage.getItem("public_cv");
     if (cached) {
-      try { const p = JSON.parse(cached); if (Date.now() - p.ts < 86400000) { setCv(p.data || null); setLoading(false); return; } } catch {}
+      try {
+        const p = JSON.parse(cached);
+        if (p.data) { setCv(p.data); setLoading(false); }
+      } catch {}
     }
+
     const fetchCV = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -22,16 +38,14 @@ const CVViewerButton = () => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!cancelled) {
-        setCv(data || null);
-        setLoading(false);
-        if (data) {
-          try { localStorage.setItem("public_cv", JSON.stringify({ data, ts: Date.now() })); } catch {}
-        }
-      }
+      applyCv(data || null);
     };
+
     fetchCV();
-    return () => { cancelled = true; };
+    const unsub = onPortfolioDataUpdated((table) => {
+      if (table === "cv_documents") fetchCV();
+    });
+    return () => { cancelled = true; unsub(); };
   }, []);
 
   const handleView = () => {

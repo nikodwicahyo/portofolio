@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import {
   MessageSquare,
   Pin,
@@ -56,6 +57,7 @@ export default function Comments() {
       .update({ is_pinned: value })
       .eq("id", id);
     fetchComments();
+    notifyPortfolioChanged();
   };
 
   const remove = async (id) => {
@@ -73,6 +75,7 @@ export default function Comments() {
     if (!result.isConfirmed) return;
     await supabase.from("portfolio_comments").delete().eq("id", id);
     fetchComments();
+    notifyPortfolioChanged();
   };
 
   const pinnedCount = comments.filter((c) => c.is_pinned).length;

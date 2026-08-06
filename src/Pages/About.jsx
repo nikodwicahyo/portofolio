@@ -3,6 +3,8 @@ import { supabase } from "../supabase"
 import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
+import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch"
+import { onPortfolioDataUpdated } from "../utils/realtimeSync"
 
 // Memoized Components
 const Header = memo(() => (
@@ -92,12 +94,17 @@ const StatCard = memo(({ icon: Icon, value, label, description, animation }) => 
 const AboutPage = () => {
   const [counts, setCounts] = useState(() => {
     const p = Number(localStorage.getItem("about_projects_count")) ||
-              (JSON.parse(localStorage.getItem("projects") || "[]").length) || 0;
+              (JSON.parse(localStorage.getItem(PROJECTS_CACHE_KEY) || "[]").length) || 0;
     const c = Number(localStorage.getItem("about_certificates_count")) ||
               (JSON.parse(localStorage.getItem("certificates") || "[]").length) || 0;
     const e = Number(localStorage.getItem("about_years_experience")) || 0;
     return { projects: p, certificates: c, yearsExperience: e };
   });
+  const [countVersion, setCountVersion] = useState(0);
+
+  useEffect(() => {
+    return onPortfolioDataUpdated(() => setCountVersion((v) => v + 1));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +144,7 @@ const AboutPage = () => {
     };
     fetchCounts();
     return () => { cancelled = true; };
-  }, []);
+  }, [countVersion]);
 
   // Memoized stats data
   const statsData = useMemo(() => [

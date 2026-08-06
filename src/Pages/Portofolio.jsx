@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 
 import { supabase } from "../supabase";
+import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
+import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 
 import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
@@ -245,7 +247,7 @@ const ExperienceTimeline = memo(({ experiences, onSelect }) => {
 );});
 
 const TAB_META = [
-  { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link' },
+  { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
   { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
   { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
   { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
@@ -255,11 +257,16 @@ const EMPTY = [];
 const CACHE_TTL = 86400000;
 const TIME_SLOTS = [5000, 10000, 15000];
 
-function useTabData() {
-  const initial = {};
-  for (const { key } of TAB_META) {
-    try {
-      const raw = localStorage.getItem(key);
+  const cacheKey = (key) => {
+    const m = TAB_META.find((t) => t.key === key);
+    return m?.storageKey || key;
+  };
+
+  function useTabData() {
+    const initial = {};
+    for (const { key } of TAB_META) {
+      try {
+        const raw = localStorage.getItem(cacheKey(key));
       if (raw) {
         const p = JSON.parse(raw);
         const data = Array.isArray(p) ? p : p.data;
@@ -275,20 +282,20 @@ function useTabData() {
   const cache = (key, data) => {
     if (data.length === 0) return;
     for (let i = 0; i < 2; i++) {
-      try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })); return; }
-      catch { if (i === 0) TAB_META.forEach(({ key: k }) => localStorage.removeItem(k)); }
+      try { localStorage.setItem(cacheKey(key), JSON.stringify({ data, timestamp: Date.now() })); return; }
+      catch { if (i === 0) TAB_META.forEach(({ key: k }) => localStorage.removeItem(cacheKey(k))); }
     }
   };
 
-  const fetchTab = useCallback(async (key, retries = 2) => {
+  const fetchTab = useCallback(async (key, retries = 2, force = false) => {
     if (fetching.current[key]) return;
     fetching.current[key] = true;
     const meta = TAB_META.find(t => t.key === key);
     if (!meta) { fetching.current[key] = false; return; }
 
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
+      const raw = localStorage.getItem(cacheKey(key));
+      if (!force && raw) {
         const p = JSON.parse(raw);
         if (!Array.isArray(p) && p.data?.length > 0 && Date.now() - p.timestamp < CACHE_TTL) {
           fetching.current[key] = false; return;
@@ -381,8 +388,7 @@ export default function FullWidthTabs() {
 
   useEffect(() => {
     for (const { key } of TAB_META) {
-      const tab = tabData[key];
-      if (!tab.fetched && !tab.loading) fetchTab(key);
+      fetchTab(key, 2, true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -391,6 +397,10 @@ export default function FullWidthTabs() {
     const tab = tabData[key];
     if (!tab.fetched && !tab.loading) fetchTab(key);
   }, [value, tabData, fetchTab]);
+
+  useEffect(() => {
+    return onPortfolioDataUpdated((table) => fetchTab(table, 2, true));
+  }, [fetchTab]);
 
   const handleChange = (event, newValue) => {
     setValue(newValue);

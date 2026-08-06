@@ -193,3 +193,11 @@ body {
   background: var(--selection-bg);
   color: var(--primary);
 }
+
+/* SweetAlert2 v11 ignores confirmButtonTextColor; force theme-aware button text */
+.swal2-styled.swal2-confirm {
+  color: var(--invert-text) !important;
+}
+.swal2-styled.swal2-cancel {
+  color: var(--primary) !important;
+}

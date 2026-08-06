@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { isPdfUrl, isBase64DataUrl } from "../../utils/fileType";
 import { Award, Upload, Trash2, ImageIcon, Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -122,9 +123,9 @@ export default function Certificates() {
     return certs.slice(start, start + ITEMS_PER_PAGE)
   }, [certs, currentPage])
 
-  const fetchCerts = useCallback(async () => {
+  const fetchCerts = useCallback(async (force = false) => {
     const raw = localStorage.getItem("dashboard_certificates")
-    if (raw) {
+    if (!force && raw) {
       try {
         const parsed = JSON.parse(raw)
         if (parsed.data?.length > 0 && Date.now() - (parsed.ts || 0) < 86400000) {
@@ -203,7 +204,8 @@ export default function Certificates() {
       setFile(null)
       setPreview(null)
       setCurrentPage(1)
-      fetchCerts()
+      fetchCerts(true)
+      notifyPortfolioChanged()
     } catch (err) {
       console.error('Upload failed:', err)
     } finally {
@@ -239,7 +241,8 @@ export default function Certificates() {
     }
 
     await supabase.from('certificates').delete().eq('id', id)
-    fetchCerts()
+    fetchCerts(true)
+    notifyPortfolioChanged()
   }
 
   const goToPage = (page) => {

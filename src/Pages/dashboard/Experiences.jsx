@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import {
   Plus,
   Trash2,
@@ -338,9 +339,9 @@ export default function Experiences() {
   const [editExperience, setEditExperience] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const fetchExperiences = async () => {
+  const fetchExperiences = async (force = false) => {
     const raw = localStorage.getItem("dashboard_experiences_ts");
-    if (raw && Date.now() - Number(raw) < 300000) return;
+    if (!force && raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("experiences")
@@ -397,7 +398,8 @@ export default function Experiences() {
       });
       if (error) throw error;
       setShowCreate(false);
-      fetchExperiences();
+      fetchExperiences(true);
+      notifyPortfolioChanged();
     } catch (err) {
       if (logoUrl) await removeOrphanLogo(logoUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
@@ -425,7 +427,8 @@ export default function Experiences() {
         .eq("id", editExperience.id);
       if (error) throw error;
       setEditExperience(null);
-      fetchExperiences();
+      fetchExperiences(true);
+      notifyPortfolioChanged();
     } catch (err) {
       if (logoUrl && file) await removeOrphanLogo(logoUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
@@ -448,7 +451,8 @@ export default function Experiences() {
     });
     if (!result.isConfirmed) return;
     await supabase.from("experiences").delete().eq("id", id);
-    fetchExperiences();
+    fetchExperiences(true);
+    notifyPortfolioChanged();
   };
 
   return (

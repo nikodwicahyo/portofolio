@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ExternalLink,
@@ -18,6 +18,8 @@ import {
 import Swal from "sweetalert2";
 import { supabase } from "../supabase";
 import { toSlug } from "../utils/slug";
+import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
+import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 
 const TECH_ICONS = {
   React: Globe,
@@ -75,7 +77,7 @@ const ProjectStats = ({ project }) => {
             {techStackCount}
           </div>
           <div className="text-[10px] md:text-xs text-muted">
-            Total Teknologi
+            Total Technology
           </div>
         </div>
       </div>
@@ -92,7 +94,7 @@ const ProjectStats = ({ project }) => {
             {featuresCount}
           </div>
           <div className="text-[10px] md:text-xs text-muted">
-            Fitur Utama
+            Key Features
           </div>
         </div>
       </div>
@@ -100,81 +102,110 @@ const ProjectStats = ({ project }) => {
   );
 };
 
-const handleGithubClick = (githubLink) => {
-  if (githubLink === "Private") {
-    Swal.fire({
-      icon: "info",
-      title: "Source Code Private",
-      text: "Maaf, source code untuk proyek ini bersifat privat.",
-      confirmButtonText: "Mengerti",
-      confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
-      background: 'var(--elevated)',
-      color: 'var(--primary)',
-    });
-    return false;
+const showUnavailable = (title, text) => {
+  Swal.fire({
+    icon: "info",
+    title,
+    text,
+    confirmButtonText: "Mengerti",
+    confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+    background: 'var(--elevated)',
+    color: 'var(--primary)',
+  });
+};
+
+const ProjectActionButton = ({ href, onClick, className, icon: Icon, label }) => {
+  const content = (
+    <>
+      <Icon className="relative w-4 h-4 md:w-5 md:h-5 group-hover:rotate-12 transition-transform" />
+      <span className="relative font-medium">{label}</span>
+    </>
+  );
+  const shared = `group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 font-medium rounded-xl transition-all duration-300 text-sm md:text-base ${className}`;
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={shared}>
+        {content}
+      </a>
+    );
   }
-  return true;
+  return (
+    <button type="button" onClick={onClick} className={shared}>
+      {content}
+    </button>
+  );
 };
 
 const ProjectDetails = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const findProject = useCallback((projects) => {
     return projects.find((p) => toSlug(p.title) === slug);
   }, [slug]);
 
+  const goBack = () => {
+    try { sessionStorage.setItem('welcomeShown', '1'); } catch {}
+    if (location.key === "default") {
+      sessionStorage.setItem('scrollToPortfolio', 'true');
+      navigate("/");
+    } else {
+      navigate(-1);
+    }
+  };
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    let cancelled = false;
     setLoading(true);
+
+    const applyProject = (p) => {
+      if (cancelled) return;
+      setProject(p);
+    };
 
     let storedProjects = [];
     try {
-      const raw = localStorage.getItem("projects");
+      const raw = localStorage.getItem(PROJECTS_CACHE_KEY);
       if (raw) {
         const p = JSON.parse(raw);
         storedProjects = Array.isArray(p) ? p : p.data ?? [];
       }
     } catch { storedProjects = []; }
     const cached = findProject(storedProjects);
-
     if (cached) {
-      setProject({
-        ...cached,
-        github: cached.github || "https://github.com/nikodwicahyo/",
-      });
+      applyProject(cached);
       setLoading(false);
-      return;
     }
 
     const fetchProjects = async () => {
       try {
         const { data, error } = await supabase
           .from("projects")
-          .select("id,title,description,img,link,github")
+          .select("id,title,description,img,link,github,tech_stack,features")
           .order("id", { ascending: false });
 
         if (error) throw error;
 
         if (data) {
-          localStorage.setItem("projects", JSON.stringify(data));
+          localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
           const found = findProject(data);
-          if (found) {
-            setProject({
-              ...found,
-              github: found.github || "https://github.com/nikodwicahyo/",
-            });
-          }
+          if (found) applyProject(found);
         }
       } catch (err) {
         console.error("Error fetching project:", err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchProjects();
+    const unsub = onPortfolioDataUpdated((table) => {
+      if (table === "projects") fetchProjects();
+    });
+    return () => { cancelled = true; unsub(); };
   }, [slug, findProject]);
 
   if (loading) {
@@ -204,7 +235,7 @@ const ProjectDetails = () => {
             The project you are looking for does not exist or has been removed.
           </p>
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="inline-flex items-center space-x-2 px-6 py-3 bg-soft hover:bg-soft-strong text-primary rounded-xl transition-all duration-300 border border-edge hover:border-edge-strong"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -263,7 +294,7 @@ const ProjectDetails = () => {
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16">
             <div className="flex items-center space-x-2 md:space-x-4 mb-8 md:mb-12 animate-fadeIn">
               <button
-                onClick={() => navigate(-1)}
+                onClick={goBack}
                 className="group inline-flex items-center space-x-1.5 md:space-x-2 px-3 md:px-5 py-2 md:py-2.5 bg-soft rounded-xl text-primary hover:bg-soft-strong transition-all duration-300 border border-edge hover:border-edge-strong text-sm md:text-base"
               >
                 <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
@@ -296,28 +327,24 @@ const ProjectDetails = () => {
                 <ProjectStats project={project} />
 
                 <div className="flex flex-wrap gap-3 md:gap-4">
-                  <a
+                  <ProjectActionButton
                     href={project.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 bg-invert text-invert-text font-medium rounded-xl transition-all duration-300 hover:bg-invert-hover text-sm md:text-base"
-                  >
-                    <ExternalLink className="relative w-4 h-4 md:w-5 md:h-5 group-hover:rotate-12 transition-transform" />
-                    <span className="relative font-medium">Live Demo</span>
-                  </a>
+                    onClick={() => showUnavailable("Live Demo Tidak Tersedia", "Demo untuk proyek ini belum ditambahkan.")}
+                    className="bg-invert text-invert-text hover:bg-invert-hover"
+                    icon={ExternalLink}
+                    label="Live Demo"
+                  />
 
-                  <a
-                    href={project.github}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 bg-soft text-primary font-medium rounded-xl transition-all duration-300 hover:bg-soft-strong border border-edge-strong text-sm md:text-base"
-                    onClick={(e) =>
-                      !handleGithubClick(project.github) && e.preventDefault()
-                    }
-                  >
-                    <Github className="relative w-4 h-4 md:w-5 md:h-5 group-hover:rotate-12 transition-transform" />
-                    <span className="relative font-medium">Github</span>
-                  </a>
+                  <ProjectActionButton
+                    href={project.github && project.github !== "Private" ? project.github : null}
+                    onClick={() => showUnavailable(
+                      project.github === "Private" ? "Source Code Private" : "GitHub Tidak Tersedia",
+                      project.github === "Private" ? "Maaf, source code untuk proyek ini bersifat privat." : "Link GitHub untuk proyek ini belum ditambahkan."
+                    )}
+                    className="bg-soft text-primary hover:bg-soft-strong border border-edge-strong"
+                    icon={Github}
+                    label="Github"
+                  />
                 </div>
 
                 <div className="space-y-4 md:space-y-6">

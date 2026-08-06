@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import Swal from 'sweetalert2';
 import {
   Plus,
@@ -335,9 +336,9 @@ export default function Projects() {
   const [editProject, setEditProject] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (force = false) => {
     const raw = localStorage.getItem("dashboard_projects_ts");
-    if (raw && Date.now() - Number(raw) < 300000) return;
+    if (!force && raw && Date.now() - Number(raw) < 300000) return;
     setLoading(true);
     const { data } = await supabase
       .from("projects")
@@ -398,7 +399,8 @@ export default function Projects() {
       });
       if (error) throw error;
       setShowCreate(false);
-      fetchProjects();
+      fetchProjects(true);
+      notifyPortfolioChanged();
     } catch (err) {
       if (imgUrl) await removeOrphanImage(imgUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
@@ -430,7 +432,8 @@ export default function Projects() {
         .eq("id", editProject.id);
       if (error) throw error;
       setEditProject(null);
-      fetchProjects();
+      fetchProjects(true);
+      notifyPortfolioChanged();
     } catch (err) {
       if (imgUrl && file) await removeOrphanImage(imgUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
@@ -453,7 +456,8 @@ export default function Projects() {
     });
     if (!result.isConfirmed) return;
     await supabase.from("projects").delete().eq("id", id);
-    fetchProjects();
+    fetchProjects(true);
+    notifyPortfolioChanged();
   };
 
   return (
