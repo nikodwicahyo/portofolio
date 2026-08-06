@@ -146,4 +146,6 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
   );
 });
 
+PDFThumbnail.displayName = "PDFThumbnail";
+
 export default PDFThumbnail;

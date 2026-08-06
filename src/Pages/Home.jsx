@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from "react"
+import { useState, useEffect, useCallback, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram } from "lucide-react"
 import LazyImage from "../components/LazyImage"
@@ -13,6 +13,7 @@ const StatusBadge = memo(() => (
     </div>
   </div>
 ));
+StatusBadge.displayName = "StatusBadge";
 
 const MainTitle = memo(() => (
   <div className="space-y-2" data-aos="fade-up" data-aos-delay="600">
@@ -22,12 +23,14 @@ const MainTitle = memo(() => (
     </h1>
   </div>
 ));
+MainTitle.displayName = "MainTitle";
 
 const TechStack = memo(({ tech }) => (
   <div className="px-4 py-2 rounded-full bg-soft border border-edge text-xs text-secondary hover:text-primary hover:border-edge-strong transition-colors">
     {tech}
   </div>
 ));
+TechStack.displayName = "TechStack";
 
 const CTAButton = memo(({ href, text, icon: Icon, primary = false }) => (
   <a href={href}>
@@ -43,6 +46,7 @@ const CTAButton = memo(({ href, text, icon: Icon, primary = false }) => (
     </button>
   </a>
 ));
+CTAButton.displayName = "CTAButton";
 
 const SocialLink = memo(({ icon: Icon, link, label }) => (
   <a
@@ -55,6 +59,7 @@ const SocialLink = memo(({ icon: Icon, link, label }) => (
     </button>
   </a>
 ));
+SocialLink.displayName = "SocialLink";
 
 const TYPING_SPEED = 100;
 const ERASING_SPEED = 50;
@@ -106,7 +111,7 @@ const Home = () => {
       isTyping ? TYPING_SPEED : ERASING_SPEED
     );
     return () => clearTimeout(timeout);
-  }, [handleTyping]);
+  }, [handleTyping, isTyping]);
 
   return (
     <>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFoundPage() {
@@ -15,7 +14,7 @@ export default function NotFoundPage() {
             Page Not Found
           </h2>
           <p className="text-lg text-secondary max-w-md mx-auto leading-relaxed">
-            The page you're looking for doesn't exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved.
           </p>
         </div>
 

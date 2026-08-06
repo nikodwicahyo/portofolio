@@ -131,7 +131,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     if (!pdf || !container) return;
 
     if (renderTaskRef.current) {
-      try { await renderTaskRef.current.cancel(); } catch {}
+      try { await renderTaskRef.current.cancel(); } catch { /* already cancelled */ }
     }
 
     const containerWidth = container.clientWidth || 800;
@@ -240,7 +240,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";

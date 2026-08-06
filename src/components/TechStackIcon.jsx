@@ -15,5 +15,6 @@ const TechStackIcon = memo(({ TechStackIcon, Language }) => {
     </div>
   );
 });
+TechStackIcon.displayName = "TechStackIcon";
 
 export default TechStackIcon;

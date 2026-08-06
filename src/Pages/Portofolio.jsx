@@ -178,6 +178,7 @@ const ExperienceModal = ({ experience, onClose }) => {
     </div>
   );
 };
+ExperienceCard.displayName = "ExperienceCard";
 
 const CardGridLoading = ({ count, cols }) => {
   const shimmerCards = Array.from({ length: count });
@@ -213,7 +214,7 @@ const ExpShimmer = ({ count = 3 }) => (
   </div>
 );
 
-const ExperienceTimeline = memo(({ experiences, onSelect }) => {
+const ExperienceTimeline = memo(({ experiences, onSelect, visited }) => {
   const isMobile = window.innerWidth < 768;
   return (
   <div className="relative">
@@ -221,11 +222,10 @@ const ExperienceTimeline = memo(({ experiences, onSelect }) => {
     <div className="space-y-6 sm:space-y-8 md:space-y-12">
       {experiences.map((exp, index) => {
         const even = index % 2 === 0;
+        const anim = isMobile ? "fadeIn" : even ? "slideInLeft" : "slideInRight";
         return (
           <div key={exp.id || index}
-            data-aos={isMobile ? "fade-up" : even ? "fade-right" : "fade-left"}
-            data-aos-duration="1000"
-            data-aos-once="true"
+            {...entrance(visited, anim, 1000, index)}
             className="relative pl-10 sm:pl-14 md:pl-0"
           >
             <div className="absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-primary ring-4 ring-bg md:-translate-x-1/2 z-10" />
@@ -245,6 +245,7 @@ const ExperienceTimeline = memo(({ experiences, onSelect }) => {
     </div>
   </div>
 );});
+ExperienceTimeline.displayName = "ExperienceTimeline";
 
 const TAB_META = [
   { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
@@ -255,6 +256,7 @@ const TAB_META = [
 
 const EMPTY = [];
 const CACHE_TTL = 86400000;
+const MAX_CACHE_BYTES = 100 * 1024;
 const TIME_SLOTS = [5000, 10000, 15000];
 
   const cacheKey = (key) => {
@@ -272,7 +274,7 @@ const TIME_SLOTS = [5000, 10000, 15000];
         const data = Array.isArray(p) ? p : p.data;
         if (data && data.length > 0) { initial[key] = { data, loading: false, error: null, fetched: true }; continue; }
       }
-    } catch {}
+    } catch { /* invalid cache */ }
     initial[key] = { data: EMPTY, loading: false, error: null, fetched: false };
   }
 
@@ -281,8 +283,10 @@ const TIME_SLOTS = [5000, 10000, 15000];
 
   const cache = (key, data) => {
     if (data.length === 0) return;
+    const payload = JSON.stringify({ data, timestamp: Date.now() });
+    if (payload.length > MAX_CACHE_BYTES) return;
     for (let i = 0; i < 2; i++) {
-      try { localStorage.setItem(cacheKey(key), JSON.stringify({ data, timestamp: Date.now() })); return; }
+      try { localStorage.setItem(cacheKey(key), payload); return; }
       catch { if (i === 0) TAB_META.forEach(({ key: k }) => localStorage.removeItem(cacheKey(k))); }
     }
   };
@@ -301,7 +305,7 @@ const TIME_SLOTS = [5000, 10000, 15000];
           fetching.current[key] = false; return;
         }
       }
-    } catch {}
+    } catch { /* invalid cache */ }
 
     setState(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
 
@@ -355,6 +359,11 @@ const ErrorState = ({ msg, onRetry }) => (
   </div>
 );
 
+const entrance = (visited, animation, duration, index) =>
+  visited
+    ? {}
+    : { style: { animation: `${animation} ${duration}ms ease both`, animationDelay: `${index * 90}ms` } };
+
 export default function FullWidthTabs() {
   const { state: tabData, fetchTab } = useTabData();
   const { data: projects, loading: projLoading, error: projError, fetched: projFetched } = tabData.projects;
@@ -371,6 +380,18 @@ export default function FullWidthTabs() {
   const [selectedExperience, setSelectedExperience] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set());
+  const prevTabRef = useRef(value);
+
+  useEffect(() => {
+    if (value === prevTabRef.current) return;
+    setVisitedTabs((prev) => {
+      const next = new Set(prev);
+      next.add(prevTabRef.current);
+      return next;
+    });
+    prevTabRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -420,6 +441,12 @@ export default function FullWidthTabs() {
 
   const displayedProjects = showAllProjects ? projects : projects.slice(0, initialItems);
   const displayedCertificates = showAllCertificates ? certificates : certificates.slice(0, initialItems);
+  const visited = {
+    experiences: visitedTabs.has(0),
+    projects: visitedTabs.has(1),
+    certificates: visitedTabs.has(2),
+    tech: visitedTabs.has(3),
+  };
 
   const emptyState = (Icon, msg) => (
     <div className="text-center py-12 sm:py-16">
@@ -437,7 +464,7 @@ export default function FullWidthTabs() {
 
   const ExpSection = () => sectionContent(expLoading, experiences, expError, expFetched,
     <ExpShimmer />, Briefcase, "No experiences to display yet",
-    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} />,
+    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} visited={visited.experiences} />,
     'experiences'
   );
 
@@ -446,11 +473,7 @@ export default function FullWidthTabs() {
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
         {displayedProjects.map((project, index) => (
-          <div key={project.id || index}
-            data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-            data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-            data-aos-once="true"
-          >
+          <div key={project.id || index} {...entrance(visited.projects, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
             <CardProject Img={project.img} Title={project.title} Description={project.description} Link={project.link} id={project.id} />
           </div>
         ))}
@@ -468,11 +491,7 @@ export default function FullWidthTabs() {
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 w-full">
         {displayedCertificates.map((cert, index) => (
-          <div key={cert.id || index}
-            data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-            data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-            data-aos-once="true"
-          >
+          <div key={cert.id || index} {...entrance(visited.certificates, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
             <Certificate ImgSertif={cert.img} />
           </div>
         ))}
@@ -498,11 +517,7 @@ export default function FullWidthTabs() {
     </div>, Boxes, "No tech stacks to display yet",
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 w-full">
       {techStacks.map((stack, index) => (
-        <div key={stack.id}
-          data-aos={index % 3 === 0 ? "fade-up-right" : index % 3 === 1 ? "fade-up" : "fade-up-left"}
-          data-aos-duration={index % 3 === 0 ? "1000" : index % 3 === 1 ? "1200" : "1000"}
-          data-aos-once="true"
-        >
+        <div key={stack.id} {...entrance(visited.tech, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
           <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
         </div>
       ))}
@@ -579,7 +594,7 @@ export default function FullWidthTabs() {
         </AppBar>
 
         <TabPanel value={value} index={0}>
-          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.experiences ? "" : "tab-fade-in"}`}>
             <ExpSection />
             {selectedExperience && (
               <ExperienceModal experience={selectedExperience} onClose={() => setSelectedExperience(null)} />
@@ -588,19 +603,19 @@ export default function FullWidthTabs() {
         </TabPanel>
 
         <TabPanel value={value} index={1}>
-          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.projects ? "" : "tab-fade-in"}`}>
             <ProjectSection />
           </div>
         </TabPanel>
 
         <TabPanel value={value} index={2}>
-          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.certificates ? "" : "tab-fade-in"}`}>
             <CertSection />
           </div>
         </TabPanel>
 
         <TabPanel value={value} index={3}>
-          <div className="w-full px-0 sm:px-4 py-2 sm:py-4 tab-fade-in">
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.tech ? "" : "tab-fade-in"}`}>
             <TechSection />
           </div>
         </TabPanel>

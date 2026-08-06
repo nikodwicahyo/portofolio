@@ -356,7 +356,7 @@ export default function Projects() {
   useEffect(() => {
     const cached = localStorage.getItem("dashboard_projects");
     if (cached) {
-      try { setProjects(JSON.parse(cached)); } catch {}
+      try { setProjects(JSON.parse(cached)); } catch { /* invalid cache */ }
       setLoading(false);
     }
     fetchProjects();

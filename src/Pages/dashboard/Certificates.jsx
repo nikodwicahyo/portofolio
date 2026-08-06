@@ -132,7 +132,7 @@ export default function Certificates() {
           setCerts(parsed.data)
           return
         }
-      } catch {}
+      } catch { /* invalid cache */ }
     }
     setLoading(true)
     const { data } = await supabase.from('certificates').select('id,img,created_at').order('created_at', { ascending: false })
@@ -180,26 +180,13 @@ export default function Certificates() {
     try {
       const fileName = `cert-${Date.now()}-${file.name}`
       const { error: uploadError } = await supabase.storage.from('certificate-images').upload(fileName, file)
+      if (uploadError) throw new Error('Storage upload failed: ' + uploadError.message)
 
-      let imgUrl = null
-
-      if (uploadError) {
-        console.warn('Storage upload failed, using base64 fallback:', uploadError.message)
-        const reader = new FileReader()
-        imgUrl = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        })
-      } else {
-        const { data } = supabase.storage.from('certificate-images').getPublicUrl(fileName)
-        imgUrl = data.publicUrl
-      }
+      const { data } = supabase.storage.from('certificate-images').getPublicUrl(fileName)
+      const imgUrl = data.publicUrl
 
       const { error: insertError } = await supabase.from('certificates').insert({ img: imgUrl })
-      if (insertError) {
-        console.error('Insert error:', insertError)
-      }
+      if (insertError) throw insertError
 
       setFile(null)
       setPreview(null)
@@ -208,6 +195,14 @@ export default function Certificates() {
       notifyPortfolioChanged()
     } catch (err) {
       console.error('Upload failed:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Upload Failed',
+        text: err?.message || 'Failed to upload certificate.',
+        confirmButtonColor: 'var(--invert)',
+        background: 'var(--elevated)',
+        color: 'var(--primary)',
+      })
     } finally {
       setUploading(false)
     }

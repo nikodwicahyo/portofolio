@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Modal, IconButton, Box, Fade, Backdrop } from "@mui/material";
+import { Modal, IconButton, Box, Backdrop } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 const ImageViewerModal = ({ imageUrl, isOpen, onClose }) => {

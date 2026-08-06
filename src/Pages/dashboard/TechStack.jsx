@@ -237,46 +237,93 @@ const TechStackForm = ({
   );
 };
 
+const CACHE_KEY = "tech_stacks";
+const CACHE_TTL = 300000;
+const MAX_CACHE_BYTES = 100 * 1024;
+const ICON_BUCKET = "project-images";
+
+const readCachedItems = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY) || localStorage.getItem("dashboard_tech_stacks");
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    const data = Array.isArray(p) ? p : p.data;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const ts = Array.isArray(p)
+      ? Number(localStorage.getItem("dashboard_tech_stacks_ts")) || 0
+      : p.timestamp || 0;
+    return { data, fresh: Date.now() - ts < CACHE_TTL };
+  } catch {
+    return null;
+  }
+};
+
+const saveCache = (rows) => {
+  if (rows.length === 0) return;
+  const payload = JSON.stringify({ data: rows, timestamp: Date.now() });
+  if (payload.length > MAX_CACHE_BYTES) return;
+  for (let i = 0; i < 2; i++) {
+    try {
+      localStorage.setItem(CACHE_KEY, payload);
+      return;
+    } catch {
+      if (i === 0) localStorage.removeItem(CACHE_KEY);
+    }
+  }
+};
+
 export default function TechStack() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const fetchItems = async (force = false) => {
-    const raw = localStorage.getItem("dashboard_tech_stacks_ts");
-    if (!force && raw && Date.now() - Number(raw) < 300000) return;
-    setLoading(true);
-    const { data } = await supabase
-      .from("tech_stacks")
-      .select("id,name,icon,display_order")
-      .order("display_order", { ascending: true });
-    const rows = data || [];
-    setItems(rows);
-    setLoading(false);
+    const cached = readCachedItems();
+    if (!force && cached?.fresh) {
+      setItems(cached.data);
+      setLoading(false);
+      return;
+    }
+    if (!force && cached) setItems(cached.data);
+    setLoading(!cached);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-      localStorage.setItem("dashboard_tech_stacks_ts", String(Date.now()));
-      localStorage.setItem("dashboard_tech_stacks", JSON.stringify(rows));
-    } catch { /* storage full */ }
+      const { data, error } = await supabase
+        .from("tech_stacks")
+        .select("id,name,icon,display_order")
+        .order("display_order", { ascending: true });
+      clearTimeout(timer);
+      if (error) throw error;
+      const rows = data || [];
+      setItems(rows);
+      setLoading(false);
+      setError(null);
+      saveCache(rows);
+    } catch (err) {
+      clearTimeout(timer);
+      setLoading(false);
+      if (!cached) setError(err?.message || "Failed to load tech stacks");
+    }
   };
 
   useEffect(() => {
-    const cached = localStorage.getItem("dashboard_tech_stacks");
+    const cached = readCachedItems();
     if (cached) {
-      try { setItems(JSON.parse(cached)); } catch {}
+      setItems(cached.data);
       setLoading(false);
     }
     fetchItems();
   }, []);
 
-  const uploadIcon = (f) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(f);
-    });
+  const uploadIcon = async (f) => {
+    const fileName = `${Date.now()}-${f.name}`;
+    await supabase.storage.from(ICON_BUCKET).upload(fileName, f);
+    const { data } = supabase.storage.from(ICON_BUCKET).getPublicUrl(fileName);
+    return data.publicUrl;
   };
 
   const makeRoomForOrder = async (order, excludeId = null) => {
@@ -300,73 +347,85 @@ export default function TechStack() {
   const handleCreate = async (form, file) => {
     setUploading(true);
     let iconUrl = "";
-    if (file) iconUrl = await uploadIcon(file);
-    const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
-    await makeRoomForOrder(order);
-    await supabase.from("tech_stacks").insert({
-      name: form.Name,
-      icon: iconUrl,
-      display_order: order,
-    });
-    setShowCreate(false);
-    setUploading(false);
-    fetchItems(true);
-    notifyPortfolioChanged();
+    try {
+      if (file) iconUrl = await uploadIcon(file);
+      const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
+      await makeRoomForOrder(order);
+      const { error } = await supabase.from("tech_stacks").insert({
+        name: form.Name,
+        icon: iconUrl,
+        display_order: order,
+      });
+      if (error) throw error;
+      setShowCreate(false);
+      fetchItems(true);
+      notifyPortfolioChanged();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleEdit = async (form, file) => {
     setUploading(true);
     let iconUrl = editItem.icon || "";
-    if (file) iconUrl = await uploadIcon(file);
-    const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
-    const oldOrder = editItem.display_order;
+    try {
+      if (file) iconUrl = await uploadIcon(file);
+      const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
+      const oldOrder = editItem.display_order;
 
-    if (order !== oldOrder) {
-      if (order < oldOrder) {
-        const { data: toShift } = await supabase
-          .from("tech_stacks")
-          .select("id, display_order")
-          .gte("display_order", order)
-          .lt("display_order", oldOrder)
-          .order("display_order", { ascending: false });
-        if (toShift) {
-          for (const item of toShift) {
-            await supabase
-              .from("tech_stacks")
-              .update({ display_order: item.display_order + 1 })
-              .eq("id", item.id);
+      if (order !== oldOrder) {
+        if (order < oldOrder) {
+          const { data: toShift } = await supabase
+            .from("tech_stacks")
+            .select("id, display_order")
+            .gte("display_order", order)
+            .lt("display_order", oldOrder)
+            .order("display_order", { ascending: false });
+          if (toShift) {
+            for (const item of toShift) {
+              await supabase
+                .from("tech_stacks")
+                .update({ display_order: item.display_order + 1 })
+                .eq("id", item.id);
+            }
           }
-        }
-      } else {
-        const { data: toShift } = await supabase
-          .from("tech_stacks")
-          .select("id, display_order")
-          .gt("display_order", oldOrder)
-          .lte("display_order", order)
-          .order("display_order", { ascending: true });
-        if (toShift) {
-          for (const item of toShift) {
-            await supabase
-              .from("tech_stacks")
-              .update({ display_order: item.display_order - 1 })
-              .eq("id", item.id);
+        } else {
+          const { data: toShift } = await supabase
+            .from("tech_stacks")
+            .select("id, display_order")
+            .gt("display_order", oldOrder)
+            .lte("display_order", order)
+            .order("display_order", { ascending: true });
+          if (toShift) {
+            for (const item of toShift) {
+              await supabase
+                .from("tech_stacks")
+                .update({ display_order: item.display_order - 1 })
+                .eq("id", item.id);
+            }
           }
         }
       }
-    }
 
-    await supabase
-      .from("tech_stacks")
-      .update({
-        name: form.Name,
-        icon: iconUrl,
-        display_order: order,
-      })
-      .eq("id", editItem.id);
-    setEditItem(null);
-    setUploading(false);
-    fetchItems(true);
-    notifyPortfolioChanged();
+      const { error } = await supabase
+        .from("tech_stacks")
+        .update({
+          name: form.Name,
+          icon: iconUrl,
+          display_order: order,
+        })
+        .eq("id", editItem.id);
+      if (error) throw error;
+      setEditItem(null);
+      fetchItems(true);
+      notifyPortfolioChanged();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const deleteItem = async (id) => {
@@ -382,9 +441,14 @@ export default function TechStack() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
-    await supabase.from("tech_stacks").delete().eq("id", id);
-    fetchItems(true);
-    notifyPortfolioChanged();
+    try {
+      const { error } = await supabase.from("tech_stacks").delete().eq("id", id);
+      if (error) throw error;
+      fetchItems(true);
+      notifyPortfolioChanged();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+    }
   };
 
   return (
@@ -441,7 +505,20 @@ export default function TechStack() {
         </Modal>
       )}
 
-      {loading ? (
+      {error ? (
+        <Card>
+          <div className="p-16 text-center">
+            <p className="text-muted text-sm mb-2">Failed to load tech stacks.</p>
+            <p className="text-faint text-xs mb-4">{error}</p>
+            <button
+              onClick={() => fetchItems(true)}
+              className="px-4 py-2 rounded-xl border border-edge-strong text-primary hover:bg-soft text-sm transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </Card>
+      ) : loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <SkeletonCard key={i} />

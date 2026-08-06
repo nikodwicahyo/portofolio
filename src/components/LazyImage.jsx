@@ -42,7 +42,7 @@ const LazyImage = memo(({ src, alt, className = "", wrapperClassName = "", aspec
         alt={alt}
         loading={priority ? "eager" : undefined}
         decoding="async"
-        fetchpriority={priority ? "high" : undefined}
+        fetchPriority={priority ? "high" : undefined}
         onLoad={onLoad}
         onError={() => setError(true)}
         className={`transition-all duration-500 ${loaded ? 'opacity-100 blur-0 scale-100' : 'opacity-0 blur-sm scale-105'} ${className}`}
@@ -51,5 +51,6 @@ const LazyImage = memo(({ src, alt, className = "", wrapperClassName = "", aspec
     </div>
   );
 });
+LazyImage.displayName = "LazyImage";
 
 export default LazyImage;

@@ -195,5 +195,6 @@ const Certificate = memo(({ ImgSertif }) => {
     </Box>
   );
 });
+Certificate.displayName = "Certificate";
 
 export default Certificate;

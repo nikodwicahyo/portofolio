@@ -359,7 +359,7 @@ export default function Experiences() {
   useEffect(() => {
     const cached = localStorage.getItem("dashboard_experiences");
     if (cached) {
-      try { setExperiences(JSON.parse(cached)); } catch {}
+      try { setExperiences(JSON.parse(cached)); } catch { /* invalid cache */ }
       setLoading(false);
     }
     fetchExperiences();

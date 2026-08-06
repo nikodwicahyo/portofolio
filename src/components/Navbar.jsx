@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import useTheme from "../hooks/useTheme";
+
+const navItems = [
+    { href: "#Home", label: "Home" },
+    { href: "#About", label: "About" },
+    { href: "#Portofolio", label: "Portofolio" },
+    { href: "#Contact", label: "Contact" },
+];
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -8,13 +15,6 @@ const Navbar = () => {
     const [activeSection, setActiveSection] = useState("Home");
     const { theme, toggleTheme } = useTheme();
     
-    const navItems = [
-        { href: "#Home", label: "Home" },
-        { href: "#About", label: "About" },
-        { href: "#Portofolio", label: "Portofolio" },
-        { href: "#Contact", label: "Contact" },
-    ];
-
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);

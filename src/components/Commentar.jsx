@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'lucide-react';
 import { supabase } from '../supabase';
 
 
-const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
+const Comment = memo(({ comment, formatDate, isPinned = false }) => (
     <div 
         className={`px-4 pt-4 pb-2 rounded-xl border transition-all group hover:-translate-y-0.5 ${
             isPinned 
@@ -54,6 +54,7 @@ const Comment = memo(({ comment, formatDate, index, isPinned = false }) => (
         </div>
     </div>
 ));
+Comment.displayName = "Comment";
 
 const CommentForm = memo(({ onSubmit, isSubmitting }) => {
     const [newComment, setNewComment] = useState('');
@@ -134,6 +135,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
         </form>
     );
 });
+CommentForm.displayName = "CommentForm";
 
 const Komentar = () => {
     const [comments, setComments] = useState([]);

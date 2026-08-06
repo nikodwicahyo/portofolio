@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -148,7 +148,7 @@ const ProjectDetails = () => {
   }, [slug]);
 
   const goBack = () => {
-    try { sessionStorage.setItem('welcomeShown', '1'); } catch {}
+    try { sessionStorage.setItem('welcomeShown', '1'); } catch { /* best-effort */ }
     if (location.key === "default") {
       sessionStorage.setItem('scrollToPortfolio', 'true');
       navigate("/");
@@ -195,7 +195,7 @@ const ProjectDetails = () => {
           if (found) applyProject(found);
           try {
             localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
-          } catch {}
+          } catch { /* storage full */ }
         }
       } catch (err) {
         console.error("Error fetching project:", err.message);

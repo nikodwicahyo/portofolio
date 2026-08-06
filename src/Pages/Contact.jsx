@@ -1,4 +1,3 @@
-import React from "react";
 import { Share2, User, Mail, MessageSquare, Send } from "lucide-react";
 import SocialLinks from "../components/SocialLinks";
 import Komentar from "../components/Commentar";
@@ -107,7 +106,7 @@ const ContactPage = () => {
                   Hire Me
                 </h2>
                 <p className="text-sm text-secondary">
-                  Let's build something extraordinary with intelligent AI solutions, I'm ready to deliver. Send me an email below, and let's discuss.
+                  Let&apos;s build something extraordinary with intelligent AI solutions, I&apos;m ready to deliver. Send me an email below, and let&apos;s discuss.
                 </p>
               </div>
               <Share2 className="w-10 h-10 text-faint" />

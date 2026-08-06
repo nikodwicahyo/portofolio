@@ -1,4 +1,4 @@
-import React, { useEffect, useState, memo, useMemo } from "react"
+import { useEffect, useState, memo, useMemo } from "react"
 import { supabase } from "../supabase"
 import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
@@ -27,6 +27,7 @@ const Header = memo(() => (
     </p>
   </div>
 ));
+Header.displayName = "Header";
 
 const ProfileImage = memo(() => (
   <div className="flex justify-end items-center sm:p-12 sm:py-0 sm:pb-0 p-0 py-2 pb-2">
@@ -48,6 +49,7 @@ const ProfileImage = memo(() => (
     </div>
   </div>
 ));
+ProfileImage.displayName = "ProfileImage";
 
 const StatCard = memo(({ icon: Icon, value, label, description, animation }) => (
   <div data-aos={animation} data-aos-duration={1300} className="relative group">
@@ -90,6 +92,7 @@ const StatCard = memo(({ icon: Icon, value, label, description, animation }) => 
     </div>
   </div>
 ));
+StatCard.displayName = "StatCard";
 
 const AboutPage = () => {
   const [counts, setCounts] = useState(() => {
@@ -189,7 +192,7 @@ const AboutPage = () => {
               data-aos="fade-right"
               data-aos-duration="1000"
             >
-              Hello, I'm
+              Hello, I&apos;m
               <span 
                 className="block mt-2 text-primary"
                 data-aos="fade-right"
@@ -226,7 +229,7 @@ const AboutPage = () => {
             </svg>
           </div>
           <blockquote className="text-primary text-center lg:text-left italic font-medium text-sm">
-            "Leveraging AI as a professional tool, not a replacement."
+            &quot;Leveraging AI as a professional tool, not a replacement.&quot;
           </blockquote>
         </div>
       </div>

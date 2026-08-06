@@ -60,5 +60,6 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
     </div>
   );
 });
+CardProject.displayName = "CardProject";
 
 export default CardProject;

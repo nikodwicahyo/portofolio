@@ -26,7 +26,7 @@ function notify(table) {
 function invalidate(table) {
   const entry = TABLES.find((t) => t.table === table);
   if (!entry) return;
-  try { localStorage.removeItem(entry.cacheKey); } catch {}
+  try { localStorage.removeItem(entry.cacheKey); } catch { /* best-effort */ }
   notify(table);
 }
 
@@ -35,7 +35,7 @@ function invalidateAll() {
 }
 
 export function notifyPortfolioChanged() {
-  try { localStorage.setItem(INVALIDATE_KEY, String(Date.now())); } catch {}
+  try { localStorage.setItem(INVALIDATE_KEY, String(Date.now())); } catch { /* best-effort */ }
 }
 
 function onVisibilityChange() {
