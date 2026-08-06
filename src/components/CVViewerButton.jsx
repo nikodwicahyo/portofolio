@@ -17,18 +17,7 @@ const CVViewerButton = () => {
       if (cancelled) return;
       setCv(data || null);
       setLoading(false);
-      if (data) {
-        try { localStorage.setItem("public_cv", JSON.stringify({ data, ts: Date.now() })); } catch {}
-      }
     };
-
-    const cached = localStorage.getItem("public_cv");
-    if (cached) {
-      try {
-        const p = JSON.parse(cached);
-        if (p.data) { setCv(p.data); setLoading(false); }
-      } catch {}
-    }
 
     const fetchCV = async () => {
       setLoading(true);

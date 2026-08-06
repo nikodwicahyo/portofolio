@@ -15,7 +15,7 @@ import Login from "./Pages/Login";
 import Dashboard from "./Pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { prefetchPortfolioData } from "./utils/portfolioPrefetch";
+import { prefetchPortfolioData, clearStaleCache } from "./utils/portfolioPrefetch";
 import { initRealtimeSync } from "./utils/realtimeSync";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
@@ -82,6 +82,7 @@ function App() {
 
   useEffect(() => {
     initRealtimeSync();
+    clearStaleCache();
     AOS.init({ once: false, offset: 10 });
     const onResize = () => AOS.refresh();
     window.addEventListener("resize", onResize);

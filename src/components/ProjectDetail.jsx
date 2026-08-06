@@ -191,9 +191,11 @@ const ProjectDetails = () => {
         if (error) throw error;
 
         if (data) {
-          localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
           const found = findProject(data);
           if (found) applyProject(found);
+          try {
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
+          } catch {}
         }
       } catch (err) {
         console.error("Error fetching project:", err.message);

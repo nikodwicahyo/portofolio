@@ -93,21 +93,12 @@ export default function CVDocuments() {
       }
 
       const { error: uploadError } = await supabase.storage.from('cv-documents').upload(finalName, file, { upsert: true });
-
-      let fileData = null;
-
       if (uploadError) {
-        console.warn('Storage upload failed, using base64 fallback:', uploadError.message);
-        const reader = new FileReader();
-        fileData = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      } else {
-        const { data } = supabase.storage.from('cv-documents').getPublicUrl(finalName);
-        fileData = data.publicUrl;
+        throw new Error('Storage upload failed: ' + uploadError.message);
       }
+
+      const { data } = supabase.storage.from('cv-documents').getPublicUrl(finalName);
+      const fileData = data.publicUrl;
 
       if (cv?.id) {
         await supabase
@@ -127,6 +118,14 @@ export default function CVDocuments() {
       notifyPortfolioChanged();
     } catch (err) {
       console.error('Upload failed:', err);
+      Swal.fire({
+        title: 'Upload Gagal',
+        text: err.message || 'Gagal mengunggah CV. Periksa koneksi dan coba lagi.',
+        icon: 'error',
+        confirmButtonColor: 'var(--invert)',
+        background: 'var(--elevated)',
+        color: 'var(--primary)',
+      });
     } finally {
       setUploading(false);
     }

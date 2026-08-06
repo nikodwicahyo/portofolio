@@ -2,6 +2,12 @@ import { supabase } from "../supabase";
 
 export const PROJECTS_CACHE_KEY = "projects_v2";
 
+export function clearStaleCache() {
+  try {
+    for (const k of ["projects", "public_cv"]) localStorage.removeItem(k);
+  } catch {}
+}
+
 const TAB_META = [
   { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
   { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
