@@ -208,12 +208,10 @@ const AboutPage = () => {
               data-aos="fade-right"
               data-aos-duration="1500"
             >
-              I am an Informatic Engineering student at Gunadarma University with a strong passion for system
-              engineer, artificial intelligence, software engineer, and IT infrastructure. I have hands-on experience
-              in software installation, hardware troubleshooting, database and server administration, and network
-              configuration (LAN/WLAN). Proficient in both Windows and Linux environments with programming
-              abilities in Python, Golang, PHP, Javacript, and SQL. Highly motivated to learn, grow, and contribute
-              effectively within a dynamic and professional IT environment.
+              Fresh Graduate in Computer Science from Gunadarma University with hands-on experience in Artificial Intelligence, Full-Stack Software Development, 
+              and IT Infrastructure through internships at the Financial Services Authority (OJK) and the Ministry of Foreign Affairs of the Republic of Indonesia. 
+              Proficient in Python, Golang, PHP, JavaScript, and SQL, with experience developing AI-powered solutions and machine learning models, full-stack applications, 
+              database and server systems across Windows and Linux environments. Skilled in translating complex technical and organizational requirements into scalable and data-driven solutions.
             </p>
 
                {/* Quote Section */}
