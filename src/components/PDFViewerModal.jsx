@@ -355,7 +355,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               title="Show overview"
               sx={{
                 position: "absolute", top: 8, left: 8, zIndex: 10,
-                color: "#fff", bgcolor: "rgba(0,0,0,0.75)",
+                color: "var(--primary)", bgcolor: "rgba(0,0,0,0.75)",
                 "&:hover": { bgcolor: "rgba(0,0,0,0.9)" },
               }}
             ><MenuIcon fontSize="small" /></IconButton>
@@ -374,7 +374,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                 title="Hide overview"
                 sx={{
                   position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
-                  color: "#fff", bgcolor: "rgba(0,0,0,0.75)", "&:hover": { bgcolor: "rgba(0,0,0,0.9)" },
+                  color: "var(--primary)", bgcolor: "rgba(0,0,0,0.75)", "&:hover": { bgcolor: "rgba(0,0,0,0.9)" },
                 }}
               ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
