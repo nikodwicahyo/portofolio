@@ -36,6 +36,7 @@ const base64ToUint8Array = (base64) => {
 
 const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "document.pdf", title }) => {
   const isDesktop = useMediaQuery("(min-width:900px)");
+  const isDark = useMediaQuery("(prefers-color-scheme: dark)");
   const [numPages, setNumPages] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -355,8 +356,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               title="Show overview"
               sx={{
                 position: "absolute", top: 8, left: 8, zIndex: 10,
-                color: "var(--primary)", bgcolor: "rgba(0,0,0,0.75)",
-                "&:hover": { bgcolor: "rgba(0,0,0,0.9)" },
+                color: "var(--primary)", bgcolor: isDark ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)",
+                "&:hover": { bgcolor: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,1)" },
               }}
             ><MenuIcon fontSize="small" /></IconButton>
           )}
@@ -374,7 +375,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                 title="Hide overview"
                 sx={{
                   position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
-                  color: "var(--primary)", bgcolor: "rgba(0,0,0,0.75)", "&:hover": { bgcolor: "rgba(0,0,0,0.9)" },
+                  color: "var(--primary)", bgcolor: isDark ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)", "&:hover": { bgcolor: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,1)" },
                 }}
               ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
