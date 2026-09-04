@@ -51,6 +51,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const renderTaskRef = useRef(null);
   const fitScaleRef = useRef(1);
   const obRef = useRef(null);
+  const roRef = useRef(null);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -225,9 +226,16 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [zoom, rotation, overviewOpen]);
 
   useEffect(() => {
-    if (!pdfRef.current || loading) return;
-    const timer = setTimeout(renderAllPages, 0);
-    return () => clearTimeout(timer);
+    const container = containerRef.current;
+    if (!container || !pdfRef.current || loading) return;
+
+    const ro = new ResizeObserver(() => {
+      if (pdfRef.current) renderAllPages();
+    });
+    ro.observe(container);
+    roRef.current = ro;
+
+    return () => { ro.disconnect(); roRef.current = null; };
   }, [renderAllPages, loading]);
 
   useEffect(() => {
@@ -250,7 +258,10 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [isOpen]);
 
   useEffect(() => {
-    return () => { if (obRef.current) obRef.current.disconnect(); };
+    return () => {
+      if (obRef.current) obRef.current.disconnect();
+      if (roRef.current) roRef.current.disconnect();
+    };
   }, []);
 
   const scrollToPage = (pageNum) => {
