@@ -7,7 +7,7 @@ import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
+import MenuIcon from "@mui/icons-material/Menu";
 import { isBase64DataUrl } from "../utils/fileType";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -309,14 +309,6 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
             {title || "PDF Viewer"}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {isDesktop && thumbnails.length > 0 && (
-              <IconButton
-                size="small"
-                onClick={() => setOverviewOpen(prev => !prev)}
-                title={overviewOpen ? "Hide overview" : "Show overview"}
-                sx={{ color: "var(--primary)", bgcolor: overviewOpen ? "var(--soft-strong)" : "transparent", "&:hover": { bgcolor: "var(--soft-strong)" } }}
-              ><MenuBookIcon fontSize="small" /></IconButton>
-            )}
             {showDownload && (
               <IconButton onClick={handleDownload} title="Download PDF"
                 sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" } }} size="large"
@@ -334,9 +326,18 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               sx={{
                 width: 180, shrink: 0, overflow: "auto", bgcolor: "var(--surface)",
                 borderRight: "1px solid var(--edge)",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2, px: 1,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2, px: 1, position: "relative",
               }}
             >
+              <IconButton
+                size="small"
+                onClick={() => setOverviewOpen(false)}
+                title="Hide overview"
+                sx={{
+                  position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
+                  color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" },
+                }}
+              ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
                 <Box
                   key={i}
@@ -362,6 +363,18 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
             ref={containerRef}
             sx={{ flex: 1, overflow: "auto", bgcolor: "var(--sidebar)", position: "relative" }}
           >
+            {isDesktop && !overviewOpen && thumbnails.length > 0 && (
+              <IconButton
+                size="small"
+                onClick={() => setOverviewOpen(true)}
+                title="Show overview"
+                sx={{
+                  position: "absolute", top: 8, left: 8, zIndex: 1,
+                  color: "var(--primary)", bgcolor: "var(--soft-strong)",
+                  "&:hover": { bgcolor: "var(--edge-strong)" },
+                }}
+              ><MenuIcon fontSize="small" /></IconButton>
+            )}
             {loading ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
                 <Typography sx={{ color: "var(--secondary)" }}>Loading PDF...</Typography>
