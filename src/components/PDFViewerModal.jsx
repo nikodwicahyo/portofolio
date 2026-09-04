@@ -7,6 +7,7 @@ import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import { isBase64DataUrl } from "../utils/fileType";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -43,6 +44,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const [displayZoom, setDisplayZoom] = useState("Fit");
   const [anchorEl, setAnchorEl] = useState(null);
   const [thumbnails, setThumbnails] = useState([]);
+  const [overviewOpen, setOverviewOpen] = useState(true);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
   const pagesContainerRef = useRef(null);
@@ -307,6 +309,14 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
             {title || "PDF Viewer"}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {isDesktop && thumbnails.length > 0 && (
+              <IconButton
+                size="small"
+                onClick={() => setOverviewOpen(prev => !prev)}
+                title={overviewOpen ? "Hide overview" : "Show overview"}
+                sx={{ color: "var(--primary)", bgcolor: overviewOpen ? "var(--soft-strong)" : "transparent", "&:hover": { bgcolor: "var(--soft-strong)" } }}
+              ><MenuBookIcon fontSize="small" /></IconButton>
+            )}
             {showDownload && (
               <IconButton onClick={handleDownload} title="Download PDF"
                 sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" } }} size="large"
@@ -319,7 +329,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
         </Box>
 
         <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {isDesktop && thumbnails.length > 0 && (
+          {isDesktop && overviewOpen && thumbnails.length > 0 && (
             <Box
               sx={{
                 width: 180, shrink: 0, overflow: "auto", bgcolor: "var(--surface)",
