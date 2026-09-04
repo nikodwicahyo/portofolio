@@ -7,7 +7,7 @@ import Comments from './dashboard/Comments'
 import Experiences from './dashboard/Experiences'
 import TechStack from './dashboard/TechStack'
 import CVDocuments from './dashboard/CVDocuments'
-import { FolderGit2, Award, MessageSquare, LogOut, LayoutDashboard, Menu, Briefcase, Boxes, FileText, Sun, Moon } from 'lucide-react'
+import { FolderGit2, Award, MessageSquare, LogOut, LayoutDashboard, Menu, Briefcase, Boxes, FileText, Sun, Moon, Home } from 'lucide-react'
 import useTheme from '../hooks/useTheme'
 
 const NAV_ITEMS = [
@@ -83,6 +83,16 @@ export default function Dashboard() {
         {theme === "dark" ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
         {theme === "dark" ? "Light Mode" : "Dark Mode"}
       </button>
+
+      {/* Back to Home */}
+      <Link
+        to="/"
+        onClick={() => setSidebarOpen(false)}
+        className="shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary hover:text-primary hover:bg-soft border border-transparent transition-all duration-200 text-sm"
+      >
+        <Home className="w-4 h-4 shrink-0" />
+        Back to Home
+      </Link>
 
       {/* Logout */}
       <button
