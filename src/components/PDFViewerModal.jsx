@@ -52,6 +52,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const fitScaleRef = useRef(1);
   const obRef = useRef(null);
   const roRef = useRef(null);
+  const renderingRef = useRef(false);
+  const renderDirtyRef = useRef(false);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -129,9 +131,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [pdfUrl, isOpen, renderThumbnails]);
 
   const renderAllPages = useCallback(async () => {
+    if (renderingRef.current) return;
     const pdf = pdfRef.current;
     const container = pagesContainerRef.current;
     if (!pdf || !container) return;
+
+    renderingRef.current = true;
 
     if (renderTaskRef.current) {
       try { await renderTaskRef.current.cancel(); } catch { /* already cancelled */ }
@@ -222,6 +227,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       setDisplayZoom(zoom !== null ? Math.round((zoom !== null ? zoom : fitScaleRef.current) * 100) + "%" : "Fit");
     } catch (err) {
       if (err?.name !== "RenderingCancelledException") console.error("PDF render failed:", err);
+    } finally {
+      renderingRef.current = false;
+      if (renderDirtyRef.current) {
+        renderDirtyRef.current = false;
+        renderAllPages();
+      }
     }
   }, [zoom, rotation, overviewOpen]);
 
@@ -230,7 +241,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     if (!container || !pdfRef.current || loading) return;
 
     const ro = new ResizeObserver(() => {
-      if (pdfRef.current) renderAllPages();
+      if (!pdfRef.current) return;
+      if (renderingRef.current) {
+        renderDirtyRef.current = true;
+        return;
+      }
+      renderAllPages();
     });
     ro.observe(container);
     roRef.current = ro;
