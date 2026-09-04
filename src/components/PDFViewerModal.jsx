@@ -374,7 +374,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                 title="Hide overview"
                 sx={{
                   position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
-                  color: "var(--primary)", "&:hover": { bgcolor: "var(--soft-strong)" },
+                  color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" },
                 }}
               ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
