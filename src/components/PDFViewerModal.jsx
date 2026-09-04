@@ -222,7 +222,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     } catch (err) {
       if (err?.name !== "RenderingCancelledException") console.error("PDF render failed:", err);
     }
-  }, [zoom, rotation]);
+  }, [zoom, rotation, overviewOpen]);
 
   useEffect(() => {
     if (!pdfRef.current || loading) return;
