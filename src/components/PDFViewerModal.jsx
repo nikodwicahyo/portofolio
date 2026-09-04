@@ -320,7 +320,19 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Box sx={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+          {isDesktop && !overviewOpen && thumbnails.length > 0 && (
+            <IconButton
+              size="small"
+              onClick={() => setOverviewOpen(true)}
+              title="Show overview"
+              sx={{
+                position: "absolute", top: 8, left: 8, zIndex: 10,
+                color: "var(--primary)", bgcolor: "var(--soft-strong)",
+                "&:hover": { bgcolor: "var(--edge-strong)" },
+              }}
+            ><MenuIcon fontSize="small" /></IconButton>
+          )}
           {isDesktop && overviewOpen && thumbnails.length > 0 && (
             <Box
               sx={{
@@ -361,20 +373,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
 
           <Box
             ref={containerRef}
-            sx={{ flex: 1, overflow: "auto", bgcolor: "var(--sidebar)", position: "relative" }}
+            sx={{ flex: 1, overflow: "auto", bgcolor: "var(--sidebar)" }}
           >
-            {isDesktop && !overviewOpen && thumbnails.length > 0 && (
-              <IconButton
-                size="small"
-                onClick={() => setOverviewOpen(true)}
-                title="Show overview"
-                sx={{
-                  position: "absolute", top: 8, left: 8, zIndex: 1,
-                  color: "var(--primary)", bgcolor: "var(--soft-strong)",
-                  "&:hover": { bgcolor: "var(--edge-strong)" },
-                }}
-              ><MenuIcon fontSize="small" /></IconButton>
-            )}
             {loading ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
                 <Typography sx={{ color: "var(--secondary)" }}>Loading PDF...</Typography>
