@@ -84,7 +84,7 @@ export default function CVDocuments() {
           const url = new URL(cv.file_data);
           const pathParts = url.pathname.split('/');
           const oldFileName = pathParts[pathParts.length - 1];
-          if (oldFileName && oldFileName !== finalName) {
+          if (oldFileName) {
             await supabase.storage.from('cv-documents').remove([oldFileName]);
           }
         } catch {
@@ -98,7 +98,7 @@ export default function CVDocuments() {
       }
 
       const { data } = supabase.storage.from('cv-documents').getPublicUrl(finalName);
-      const fileData = data.publicUrl;
+      const fileData = data.publicUrl + `?t=${Date.now()}`;
 
       if (cv?.id) {
         await supabase

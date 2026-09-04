@@ -31,7 +31,7 @@ export default function Dashboard() {
   }
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full p-5 gap-6">
+    <div className="flex flex-col h-full p-5 gap-5 overflow-y-auto">
       {/* Logo */}
       <div className="flex items-center gap-3 px-1 shrink-0">
         <div className="relative w-9 h-9 bg-soft rounded-xl border border-edge flex items-center justify-center">
@@ -74,34 +74,37 @@ export default function Dashboard() {
         })}
       </nav>
 
-      {/* Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        className="shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary hover:text-primary hover:bg-soft border border-transparent transition-all duration-200 text-sm"
-      >
-        {theme === "dark" ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
-        {theme === "dark" ? "Light Mode" : "Dark Mode"}
-      </button>
+      {/* Bottom Actions */}
+      <div className="shrink-0 flex flex-col gap-1 pt-2 border-t border-edge">
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary hover:text-primary hover:bg-soft border border-transparent transition-all duration-200 text-sm"
+        >
+          {theme === "dark" ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+        </button>
 
-      {/* Back to Home */}
-      <Link
-        to="/"
-        onClick={() => setSidebarOpen(false)}
-        className="shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary hover:text-primary hover:bg-soft border border-transparent transition-all duration-200 text-sm"
-      >
-        <Home className="w-4 h-4 shrink-0" />
-        Back to Home
-      </Link>
+        {/* Back to Home */}
+        <Link
+          to="/"
+          onClick={() => setSidebarOpen(false)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary hover:text-primary hover:bg-soft border border-transparent transition-all duration-200 text-sm"
+        >
+          <Home className="w-4 h-4 shrink-0" />
+          Back to Home
+        </Link>
 
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted hover:text-red-400 hover:bg-red-500/5 border border-transparent hover:border-red-500/15 transition-all duration-200 text-sm"
-      >
-        <LogOut className="w-4 h-4 shrink-0" />
-        Sign Out
-      </button>
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted hover:text-red-400 hover:bg-red-500/5 border border-transparent hover:border-red-500/15 transition-all duration-200 text-sm"
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          Sign Out
+        </button>
+      </div>
     </div>
   )
 
