@@ -356,8 +356,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               title="Show overview"
               sx={{
                 position: "absolute", top: 8, left: 8, zIndex: 10,
-                color: "var(--primary)", bgcolor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.75)",
-                "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.9)" },
+                color: isDark ? "#fff" : "#18181b", bgcolor: isDark ? "#000" : "#fff",
+                "&:hover": { bgcolor: isDark ? "#222" : "#e5e5e5" },
               }}
             ><MenuIcon fontSize="small" /></IconButton>
           )}
@@ -375,7 +375,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                 title="Hide overview"
                 sx={{
                   position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
-                  color: "var(--primary)", bgcolor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.75)", "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.9)" },
+                  color: isDark ? "#fff" : "#18181b", bgcolor: isDark ? "#000" : "#fff", "&:hover": { bgcolor: isDark ? "#222" : "#e5e5e5" },
                 }}
               ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
