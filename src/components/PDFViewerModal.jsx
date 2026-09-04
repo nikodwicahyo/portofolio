@@ -9,6 +9,7 @@ import RotateRightIcon from "@mui/icons-material/RotateRight";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import MenuIcon from "@mui/icons-material/Menu";
 import { isBase64DataUrl } from "../utils/fileType";
+import useTheme from "../hooks/useTheme";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -36,7 +37,7 @@ const base64ToUint8Array = (base64) => {
 
 const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "document.pdf", title }) => {
   const isDesktop = useMediaQuery("(min-width:900px)");
-  const isDark = useMediaQuery("(prefers-color-scheme: dark)");
+  const { theme } = useTheme();
   const [numPages, setNumPages] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -356,8 +357,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
               title="Show overview"
               sx={{
                 position: "absolute", top: 8, left: 8, zIndex: 10,
-                color: isDark ? "#fff" : "#18181b", bgcolor: isDark ? "#000" : "#fff",
-                "&:hover": { bgcolor: isDark ? "#222" : "#e5e5e5" },
+                color: theme === "dark" ? "#fff" : "#18181b", bgcolor: theme === "dark" ? "#000" : "#fff",
+                "&:hover": { bgcolor: theme === "dark" ? "#222" : "#e5e5e5" },
               }}
             ><MenuIcon fontSize="small" /></IconButton>
           )}
@@ -375,7 +376,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
                 title="Hide overview"
                 sx={{
                   position: "sticky", top: 0, zIndex: 1, alignSelf: "flex-start", mb: 0.5,
-                  color: isDark ? "#fff" : "#18181b", bgcolor: isDark ? "#000" : "#fff", "&:hover": { bgcolor: isDark ? "#222" : "#e5e5e5" },
+                  color: theme === "dark" ? "#fff" : "#18181b", bgcolor: theme === "dark" ? "#000" : "#fff", "&:hover": { bgcolor: theme === "dark" ? "#222" : "#e5e5e5" },
                 }}
               ><MenuIcon fontSize="small" /></IconButton>
               {thumbnails.map((src, i) => (
