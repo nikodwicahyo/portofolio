@@ -198,7 +198,7 @@ const Home = () => {
                 <div className="relative w-full opacity-90">
                   <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
                     <LazyImage
-                      src="Animation1.gif"
+                      src="Coding.gif"
                       alt="Developer Animation"
                       className={`w-full h-full object-contain transition-all duration-500 ${
                         isHovering 

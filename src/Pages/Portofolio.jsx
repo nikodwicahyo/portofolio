@@ -530,7 +530,7 @@ export default function FullWidthTabs() {
         <h2 className="inline-block text-2xl sm:text-3xl md:text-5xl font-bold text-center mx-auto text-primary">
           Portfolio Showcase
         </h2>
-        <p className="text-secondary max-w-2xl mx-auto text-xs sm:text-sm md:text-base mt-2 px-2">
+        <p className="text-secondary max-w-2xl md:max-w-none mx-auto text-xs sm:text-sm md:text-base mt-2 px-2 md:whitespace-nowrap">
           Explore my journey through work experiences, projects, certifications, and technical expertise.
         </p>
       </div>
