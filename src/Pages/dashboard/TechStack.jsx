@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
+import { validateImageFile, validateSvgFile, removeImage } from "../../services/storage.js";
+import { uploadSanitizedSvg, isSvgFile } from "../../services/svgUpload.js";
+import { toStorageKey } from "../../utils/storageKey";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import {
   Plus,
@@ -144,11 +147,14 @@ const TechStackForm = ({
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(initial?.icon || null);
 
+  useEffect(() => () => { if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -237,14 +243,15 @@ const TechStackForm = ({
   );
 };
 
-const CACHE_KEY = "tech_stacks";
+// Dedicated admin key: "tech_stacks" belongs to the public tab cache.
+const CACHE_KEY = "dashboard_tech_stacks_v2";
 const CACHE_TTL = 300000;
 const MAX_CACHE_BYTES = 100 * 1024;
 const ICON_BUCKET = "project-images";
 
 const readCachedItems = () => {
   try {
-    const raw = localStorage.getItem(CACHE_KEY) || localStorage.getItem("dashboard_tech_stacks");
+    const raw = localStorage.getItem(CACHE_KEY) || localStorage.getItem("dashboard_tech_stacks") || localStorage.getItem("tech_stacks");
     if (!raw) return null;
     const p = JSON.parse(raw);
     const data = Array.isArray(p) ? p : p.data;
@@ -289,10 +296,16 @@ export default function TechStack() {
     }
     if (!force && cached) setItems(cached.data);
     setLoading(!cached);
+    const sb = getSupabase();
+    if (!sb) {
+      setLoading(false);
+      if (!cached) setError("Supabase not configured.");
+      return;
+    }
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("tech_stacks")
         .select("id,name,icon,display_order")
         .order("display_order", { ascending: true });
@@ -305,6 +318,7 @@ export default function TechStack() {
       saveCache(rows);
     } catch (err) {
       clearTimeout(timer);
+      console.error("[TechStack] fetch failed:", err?.message || err);
       setLoading(false);
       if (!cached) setError(err?.message || "Failed to load tech stacks");
     }
@@ -320,14 +334,26 @@ export default function TechStack() {
   }, []);
 
   const uploadIcon = async (f) => {
-    const fileName = `${Date.now()}-${f.name}`;
-    await supabase.storage.from(ICON_BUCKET).upload(fileName, f);
-    const { data } = supabase.storage.from(ICON_BUCKET).getPublicUrl(fileName);
+    // SVG never goes to storage raw: sanitized server-side via sanitize-svg.
+    if (isSvgFile(f)) return uploadSanitizedSvg(f);
+    const sb = getSupabase();
+    if (!sb) throw new Error("Supabase not configured.");
+    const fileName = toStorageKey('tech', f.name, 'png');
+    const { error: upErr } = await sb.storage.from(ICON_BUCKET).upload(fileName, f);
+    if (upErr) throw upErr;
+    const { data } = sb.storage.from(ICON_BUCKET).getPublicUrl(fileName);
     return data.publicUrl;
   };
 
+  const clampOrder = (v) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? Math.max(0, n) : 0;
+  };
+
   const makeRoomForOrder = async (order, excludeId = null) => {
-    const { data: conflicts } = await supabase
+    const sb = getSupabase();
+    if (!sb) return;
+    const { data: conflicts } = await sb
       .from("tech_stacks")
       .select("id, display_order")
       .gte("display_order", order)
@@ -337,21 +363,40 @@ export default function TechStack() {
       ? conflicts.filter(item => item.id !== excludeId)
       : conflicts;
     for (const item of toUpdate) {
-      await supabase
-        .from("tech_stacks")
-        .update({ display_order: item.display_order + 1 })
-        .eq("id", item.id);
+      try {
+        const { error } = await sb
+          .from("tech_stacks")
+          .update({ display_order: item.display_order + 1 })
+          .eq("id", item.id);
+        if (error) throw error;
+      } catch (err) {
+        console.error("[TechStack] makeRoomForOrder failed:", err?.message || err);
+      }
     }
   };
 
   const handleCreate = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
     let iconUrl = "";
     try {
-      if (file) iconUrl = await uploadIcon(file);
-      const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
+      if (file) {
+        try {
+          iconUrl = await uploadIcon(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const order = clampOrder(form.DisplayOrder);
       await makeRoomForOrder(order);
-      const { error } = await supabase.from("tech_stacks").insert({
+      const { error } = await sb.from("tech_stacks").insert({
         name: form.Name,
         icon: iconUrl,
         display_order: order,
@@ -361,6 +406,7 @@ export default function TechStack() {
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {
+      if (iconUrl) await removeImage(ICON_BUCKET, iconUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
@@ -368,16 +414,31 @@ export default function TechStack() {
   };
 
   const handleEdit = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
-    let iconUrl = editItem.icon || "";
+    const oldIcon = editItem.icon || "";
+    let iconUrl = oldIcon;
     try {
-      if (file) iconUrl = await uploadIcon(file);
-      const order = form.DisplayOrder ? parseInt(form.DisplayOrder, 10) : 0;
+      if (file) {
+        try {
+          iconUrl = await uploadIcon(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const order = clampOrder(form.DisplayOrder);
       const oldOrder = editItem.display_order;
 
       if (order !== oldOrder) {
         if (order < oldOrder) {
-          const { data: toShift } = await supabase
+          const { data: toShift } = await sb
             .from("tech_stacks")
             .select("id, display_order")
             .gte("display_order", order)
@@ -385,14 +446,19 @@ export default function TechStack() {
             .order("display_order", { ascending: false });
           if (toShift) {
             for (const item of toShift) {
-              await supabase
-                .from("tech_stacks")
-                .update({ display_order: item.display_order + 1 })
-                .eq("id", item.id);
+              try {
+                const { error: shiftErr } = await sb
+                  .from("tech_stacks")
+                  .update({ display_order: item.display_order + 1 })
+                  .eq("id", item.id);
+                if (shiftErr) throw shiftErr;
+              } catch (err) {
+                console.error("[TechStack] shift failed:", err?.message || err);
+              }
             }
           }
         } else {
-          const { data: toShift } = await supabase
+          const { data: toShift } = await sb
             .from("tech_stacks")
             .select("id, display_order")
             .gt("display_order", oldOrder)
@@ -400,16 +466,21 @@ export default function TechStack() {
             .order("display_order", { ascending: true });
           if (toShift) {
             for (const item of toShift) {
-              await supabase
-                .from("tech_stacks")
-                .update({ display_order: item.display_order - 1 })
-                .eq("id", item.id);
+              try {
+                const { error: shiftErr } = await sb
+                  .from("tech_stacks")
+                  .update({ display_order: item.display_order - 1 })
+                  .eq("id", item.id);
+                if (shiftErr) throw shiftErr;
+              } catch (err) {
+                console.error("[TechStack] shift failed:", err?.message || err);
+              }
             }
           }
         }
       }
 
-      const { error } = await supabase
+      const { error } = await sb
         .from("tech_stacks")
         .update({
           name: form.Name,
@@ -419,9 +490,11 @@ export default function TechStack() {
         .eq("id", editItem.id);
       if (error) throw error;
       setEditItem(null);
+      if (file && oldIcon && oldIcon !== iconUrl) await removeImage(ICON_BUCKET, oldIcon);
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {
+      if (file && iconUrl && iconUrl !== oldIcon) await removeImage(ICON_BUCKET, iconUrl);
       Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
@@ -441,9 +514,13 @@ export default function TechStack() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     try {
-      const { error } = await supabase.from("tech_stacks").delete().eq("id", id);
+      const target = items.find((i) => i.id === id);
+      const { error } = await sb.from("tech_stacks").delete().eq("id", id);
       if (error) throw error;
+      if (target?.icon) await removeImage(ICON_BUCKET, target.icon);
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {

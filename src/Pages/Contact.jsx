@@ -36,13 +36,20 @@ const ContactPage = () => {
     });
 
     try {
-      await axios.post('https://formly.email/submit', {
-        access_key: accessKey,
-        subject: 'New Message From Your Portofolio Web',
-        name: data.name,
-        email: data.email,
-        message: data.message,
-      }, { timeout: 15000 });
+      // ponytail: AbortController 15s guard in addition to axios timeout
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        await axios.post('https://formly.email/submit', {
+          access_key: accessKey,
+          subject: 'New Message From Your Portofolio Web',
+          name: data.name,
+          email: data.email,
+          message: data.message,
+        }, { timeout: 15000, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
 
       Swal.fire({
         title: 'Success!',
@@ -125,6 +132,7 @@ const ContactPage = () => {
                 <input
                   type="text"
                   placeholder="Your Name"
+                  maxLength={100}
                   {...register('name', { required: 'Name is required' })}
                   disabled={isSubmitting}
                   className="w-full p-4 pl-12 bg-soft rounded-xl border border-edge placeholder-muted text-primary focus:outline-none focus:ring-2 focus:ring-edge-strong focus:border-edge-strong transition-all duration-300 hover:border-edge-strong disabled:opacity-50"
@@ -164,6 +172,7 @@ const ContactPage = () => {
                 <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <textarea
                   placeholder="Your Message"
+                  maxLength={2000}
                   {...register('message', {
                     required: 'Message is required',
                     minLength: {

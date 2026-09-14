@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Code2, Github, Globe, User } from 'lucide-react';
 
@@ -35,16 +35,20 @@ const IconButton = ({ Icon }) => (
 
 const WelcomeScreen = ({ onLoadingComplete }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const innerRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-      setTimeout(() => {
+      innerRef.current = setTimeout(() => {
         onLoadingComplete?.();
       }, 1000);
     }, 3400);
     
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (innerRef.current) clearTimeout(innerRef.current);
+    };
   }, [onLoadingComplete]);
 
   const containerVariants = {

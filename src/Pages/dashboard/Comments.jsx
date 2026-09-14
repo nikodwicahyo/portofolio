@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
+import { highlightParts, formatDateFull } from "../../utils/format.js";
 import {
   MessageSquare,
   Pin,
@@ -30,16 +31,25 @@ export default function Comments() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pendingId, setPendingId] = useState(null);
 
   const fetchComments = async () => {
+    const sb = getSupabase(); if (!sb) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from("portfolio_comments")
-      .select("id,user_name,content,created_at,is_pinned")
-      .order("is_pinned", { ascending: false })
-      .order("created_at", { ascending: false });
-    setComments(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await sb
+        .from("portfolio_comments")
+        .select("id,user_name,content,created_at,is_pinned")
+        .order("is_pinned", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setComments(data || []);
+    } catch (err) {
+      console.error("Failed to fetch comments:", err);
+      // ponytail: keep existing list on failure, never wipe
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -52,12 +62,22 @@ export default function Comments() {
   }, [filter, search]);
 
   const pin = async (id, value) => {
-    await supabase
-      .from("portfolio_comments")
-      .update({ is_pinned: value })
-      .eq("id", id);
-    fetchComments();
-    notifyPortfolioChanged();
+    const sb = getSupabase(); if (!sb) return;
+    setPendingId(id);
+    try {
+      const { error } = await sb
+        .from("portfolio_comments")
+        .update({ is_pinned: value })
+        .eq("id", id);
+      if (error) {
+        Swal.fire({ icon: 'error', title: 'Update Failed', text: error.message || 'Failed to update pin.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+        return;
+      }
+      fetchComments();
+      notifyPortfolioChanged();
+    } finally {
+      setPendingId(null);
+    }
   };
 
   const remove = async (id) => {
@@ -73,21 +93,17 @@ export default function Comments() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
-    await supabase.from("portfolio_comments").delete().eq("id", id);
+    const sb = getSupabase(); if (!sb) return;
+    const { error } = await sb.from("portfolio_comments").delete().eq("id", id);
+    if (error) {
+      Swal.fire({ icon: 'error', title: 'Delete Failed', text: error.message || 'Failed to delete comment.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
     fetchComments();
     notifyPortfolioChanged();
   };
 
   const pinnedCount = comments.filter((c) => c.is_pinned).length;
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   // Filter + search
   const filtered = useMemo(() => {
@@ -261,7 +277,7 @@ export default function Comments() {
                       )}
                       <span className="flex items-center gap-1 text-faint text-xs ml-auto shrink-0">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(comment.created_at)}
+                        {formatDateFull(comment.created_at)}
                       </span>
                     </div>
                     <p className="text-primary text-sm leading-relaxed">
@@ -274,8 +290,9 @@ export default function Comments() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => pin(comment.id, !comment.is_pinned)}
+                      disabled={pendingId === comment.id}
                       title={comment.is_pinned ? "Unpin" : "Pin"}
-                      className={`p-2 rounded-lg border transition-all duration-200 ${
+                      className={`p-2 rounded-lg border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                         comment.is_pinned
                           ? "border-edge-strong bg-soft-strong text-primary hover:bg-soft-strong"
                           : "border-edge text-muted hover:text-primary hover:border-edge-strong"
@@ -364,16 +381,12 @@ export default function Comments() {
   );
 }
 
-// Highlight matching text
+// Highlight matching text via stateless split (no stateful /g .test())
 function highlightMatch(text, query) {
-  if (!query.trim()) return text;
-  const regex = new RegExp(
-    `(${query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-    "gi",
-  );
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? (
+  if (!query?.trim()) return text;
+  const q = query.trim().toLowerCase();
+  return highlightParts(text, query).map((part, i) =>
+    part.toLowerCase() === q ? (
       <mark key={i} className="bg-soft-strong text-primary rounded px-0.5">
         {part}
       </mark>

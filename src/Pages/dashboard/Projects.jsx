@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
+import { validateImageFile, removeImage } from "../../services/storage.js";
+import { toStorageKey } from "../../utils/storageKey";
+import { safeExternalUrl } from "../../utils/fileType";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import Swal from 'sweetalert2';
 import {
@@ -112,9 +115,9 @@ const ProjectCard = ({ project, onDelete, onEdit }) => {
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-edge">
           <div className="flex gap-2">
-            {project.link && (
+            {safeExternalUrl(project.link) && (
               <a
-                href={project.link}
+                href={safeExternalUrl(project.link)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded-lg border border-edge text-muted hover:text-primary hover:border-edge-strong transition-colors"
@@ -122,9 +125,9 @@ const ProjectCard = ({ project, onDelete, onEdit }) => {
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
-            {project.github && (
+            {safeExternalUrl(project.github) && (
               <a
-                href={project.github}
+                href={safeExternalUrl(project.github)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded-lg border border-edge text-muted hover:text-primary hover:border-edge-strong transition-colors"
@@ -204,11 +207,14 @@ const ProjectForm = ({
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(initial?.img || null);
 
+  useEffect(() => () => { if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -339,18 +345,26 @@ export default function Projects() {
   const fetchProjects = async (force = false) => {
     const raw = localStorage.getItem("dashboard_projects_ts");
     if (!force && raw && Date.now() - Number(raw) < 300000) return;
+    const sb = getSupabase();
+    if (!sb) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from("projects")
-      .select("id,title,description,img,link,github,tech_stack,features,created_at")
-      .order("created_at", { ascending: false });
-    const rows = data || [];
-    setProjects(rows);
-    setLoading(false);
     try {
-      localStorage.setItem("dashboard_projects_ts", String(Date.now()));
-      localStorage.setItem("dashboard_projects", JSON.stringify(rows));
-    } catch { /* storage full */ }
+      const { data, error } = await sb
+        .from("projects")
+        .select("id,title,description,img,link,github,tech_stack,features,created_at")
+        .order("created_at", { ascending: false });
+      if (error) { console.error("[Projects] fetch failed:", error.message); return; }
+      const rows = data || [];
+      setProjects(rows);
+      try {
+        localStorage.setItem("dashboard_projects_ts", String(Date.now()));
+        localStorage.setItem("dashboard_projects", JSON.stringify(rows));
+      } catch { /* storage full */ }
+    } catch (err) {
+      console.error("[Projects] fetch failed:", err?.message || err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -363,9 +377,12 @@ export default function Projects() {
   }, []);
 
   const uploadImage = async (f) => {
-    const fileName = `${Date.now()}-${f.name}`;
-    await supabase.storage.from("project-images").upload(fileName, f);
-    const { data } = supabase.storage
+    const sb = getSupabase();
+    if (!sb) throw new Error("Supabase not configured.");
+    const fileName = toStorageKey('proj', f.name, 'png');
+    const { error: upErr } = await sb.storage.from("project-images").upload(fileName, f);
+    if (upErr) throw upErr;
+    const { data } = sb.storage
       .from("project-images")
       .getPublicUrl(fileName);
     return data.publicUrl;
@@ -374,17 +391,30 @@ export default function Projects() {
   const removeOrphanImage = async (url) => {
     if (!url) return;
     try {
-      const fileName = url.split("/").pop();
-      if (fileName) await supabase.storage.from("project-images").remove([fileName]);
+      await removeImage("project-images", url);
     } catch { /* cleanup is best-effort */ }
   };
 
   const handleCreate = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
     let imgUrl = "";
     try {
-      if (file) imgUrl = await uploadImage(file);
-      const { error } = await supabase.from("projects").insert({
+      if (file) {
+        try {
+          imgUrl = await uploadImage(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const { error } = await sb.from("projects").insert({
         title: form.Title,
         description: form.Description,
         img: imgUrl,
@@ -410,11 +440,26 @@ export default function Projects() {
   };
 
   const handleEdit = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
-    let imgUrl = editProject.img || "";
+    const oldImg = editProject.img || "";
+    let imgUrl = oldImg;
     try {
-      if (file) imgUrl = await uploadImage(file);
-      const { error } = await supabase
+      if (file) {
+        try {
+          imgUrl = await uploadImage(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const { error } = await sb
         .from("projects")
         .update({
           title: form.Title,
@@ -432,6 +477,7 @@ export default function Projects() {
         .eq("id", editProject.id);
       if (error) throw error;
       setEditProject(null);
+      if (file && oldImg && oldImg !== imgUrl) await removeImage("project-images", oldImg);
       fetchProjects(true);
       notifyPortfolioChanged();
     } catch (err) {
@@ -455,7 +501,12 @@ export default function Projects() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
-    await supabase.from("projects").delete().eq("id", id);
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const target = projects.find((p) => p.id === id);
+    const { error } = await sb.from("projects").delete().eq("id", id);
+    if (error) { Swal.fire({ icon: 'error', title: 'Failed', text: error.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (target?.img) await removeImage("project-images", target.img);
     fetchProjects(true);
     notifyPortfolioChanged();
   };

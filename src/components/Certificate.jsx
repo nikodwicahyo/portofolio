@@ -1,12 +1,19 @@
-import { useState, memo } from "react";
+import { useState, memo, lazy, Suspense } from "react";
 import { Box, Typography } from "@mui/material";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import PDFThumbnail from "./PDFThumbnail";
-import PDFViewerModal from "./PDFViewerModal";
 import ImageViewerModal from "./ImageViewerModal";
 import LazyImage from "./LazyImage";
 import { isPdfUrl } from "../utils/fileType";
+import { optimizedImageUrl } from "../utils/image";
+
+// Split pdf.js out of the portfolio chunk: thumbnails and the viewer load on demand.
+const PDFThumbnail = lazy(() => import("./PDFThumbnail"));
+const PDFViewerModal = lazy(() => import("./PDFViewerModal"));
+
+const ThumbFallback = () => (
+  <Box sx={{ width: "100%", aspectRatio: "16/11.5" }} className="bg-soft animate-pulse rounded" />
+);
 
 const Certificate = memo(({ ImgSertif }) => {
   const [openPdf, setOpenPdf] = useState(false);
@@ -77,7 +84,9 @@ const Certificate = memo(({ ImgSertif }) => {
                 },
               }}
             >
-              <PDFThumbnail pdfUrl={ImgSertif} />
+              <Suspense fallback={<ThumbFallback />}>
+                <PDFThumbnail pdfUrl={ImgSertif} />
+              </Suspense>
               <Box
                 className="pdf-badge"
                 sx={{
@@ -103,8 +112,9 @@ const Certificate = memo(({ ImgSertif }) => {
             </Box>
           ) : (
             <LazyImage
-              src={ImgSertif}
+              src={optimizedImageUrl(ImgSertif, { width: 800 })}
               alt="Certificate"
+              aspectRatio="16/11.5"
               className="certificate-image !w-full object-cover aspect-[16/11.5]"
               wrapperClassName="w-full"
               style={{
@@ -177,14 +187,18 @@ const Certificate = memo(({ ImgSertif }) => {
         </Box>
       </Box>
 
-      {/* PDF Modal */}
-      <PDFViewerModal
-        pdfUrl={ImgSertif}
-        isOpen={openPdf}
-        onClose={handleClosePdf}
-        title="Certificate"
-        filename="Certificate.pdf"
-      />
+      {/* PDF Modal — mounted only when opened (frees the document on close) */}
+      {openPdf && (
+        <Suspense fallback={null}>
+          <PDFViewerModal
+            pdfUrl={ImgSertif}
+            isOpen={openPdf}
+            onClose={handleClosePdf}
+            title="Certificate"
+            filename="Certificate.pdf"
+          />
+        </Suspense>
+      )}
 
       {/* Image Modal */}
       <ImageViewerModal

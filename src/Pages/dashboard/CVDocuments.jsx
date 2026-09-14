@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
+import { validateImageFile, storagePathFromUrl } from "../../services/storage.js";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { isBase64DataUrl } from "../../utils/fileType";
 import { FileText, Upload, Trash2, Plus, Eye } from 'lucide-react'
@@ -40,17 +41,20 @@ export default function CVDocuments() {
 
 
   const fetchCV = useCallback(async () => {
+    const sb = getSupabase(); if (!sb) { setLoading(false); return; }
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await sb
         .from("cv_documents")
         .select("id,file_data,filename,created_at,updated_at")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (error) throw error;
       setCv(data || null);
     } catch (err) {
       console.error("Failed to fetch CV:", err);
+      // ponytail: keep previous cv on failure, never wipe
     } finally {
       setLoading(false);
     }
@@ -71,44 +75,70 @@ export default function CVDocuments() {
     }
   };
 
+  // ponytail: revoke stale object URL on change/unmount only
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview]);
+
   const isSelectedPdf = file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf');
+
+  // ponytail: sanitized storage key, collision-proof via timestamp prefix
+  const toStorageKey = (name) => {
+    const base = (name || 'cv').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'cv';
+    return `${Date.now()}-${base}.pdf`;
+  };
 
   const uploadCV = async () => {
     if (!file) return;
+    const sb = getSupabase(); if (!sb) return;
+    const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
+    const validationError = isPdf
+      ? (file.size > 5 * 1024 * 1024 ? 'File too large (max 5MB).' : null)
+      : validateImageFile(file);
+    if (validationError) {
+      Swal.fire({ title: 'Invalid File', text: validationError, icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
     setUploading(true);
     try {
       const finalName = displayName.trim() || file.name;
+      const storageKey = toStorageKey(finalName);
 
       if (cv?.file_data && !isBase64DataUrl(cv.file_data)) {
         try {
-          const url = new URL(cv.file_data);
-          const pathParts = url.pathname.split('/');
-          const oldFileName = pathParts[pathParts.length - 1];
-          if (oldFileName) {
-            await supabase.storage.from('cv-documents').remove([oldFileName]);
+          const oldPath = storagePathFromUrl(cv.file_data);
+          if (oldPath) {
+            await sb.storage.from('cv-documents').remove([oldPath]);
           }
         } catch {
           console.warn('Failed to delete old CV from storage');
         }
       }
 
-      const { error: uploadError } = await supabase.storage.from('cv-documents').upload(finalName, file, { upsert: true });
+      const { error: uploadError } = await sb.storage.from('cv-documents').upload(storageKey, file, { upsert: true });
       if (uploadError) {
-        throw new Error('Storage upload failed: ' + uploadError.message);
+        Swal.fire({ title: 'Upload Gagal', text: uploadError.message || 'Gagal mengunggah CV.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+        return;
       }
 
-      const { data } = supabase.storage.from('cv-documents').getPublicUrl(finalName);
-      const fileData = data.publicUrl + `?t=${Date.now()}`;
+      const { data } = sb.storage.from('cv-documents').getPublicUrl(storageKey);
+      const fileData = data.publicUrl;
 
       if (cv?.id) {
-        await supabase
+        const { error: updateError } = await sb
           .from('cv_documents')
           .update({ file_data: fileData, filename: finalName, updated_at: new Date().toISOString() })
           .eq('id', cv.id);
+        if (updateError) {
+          Swal.fire({ title: 'Upload Gagal', text: updateError.message || 'Gagal menyimpan CV.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
       } else {
-        await supabase
+        const { error: insertError } = await sb
           .from('cv_documents')
           .insert({ file_data: fileData, filename: finalName });
+        if (insertError) {
+          Swal.fire({ title: 'Upload Gagal', text: insertError.message || 'Gagal menyimpan CV.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
       }
 
       setFile(null);
@@ -145,21 +175,24 @@ export default function CVDocuments() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
+    const sb = getSupabase(); if (!sb) return;
 
     if (cv.file_data && !isBase64DataUrl(cv.file_data)) {
       try {
-        const url = new URL(cv.file_data);
-        const pathParts = url.pathname.split('/');
-        const fileName = pathParts[pathParts.length - 1];
-        if (fileName) {
-          await supabase.storage.from('cv-documents').remove([fileName]);
+        const storagePath = storagePathFromUrl(cv.file_data);
+        if (storagePath) {
+          await sb.storage.from('cv-documents').remove([storagePath]);
         }
       } catch {
         console.warn('Failed to delete from storage');
       }
     }
 
-    await supabase.from('cv_documents').delete().eq('id', cv.id);
+    const { error: deleteError } = await sb.from('cv_documents').delete().eq('id', cv.id);
+    if (deleteError) {
+      Swal.fire({ title: 'Delete Failed', text: deleteError.message || 'Failed to delete CV.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
     setCv(null);
     setFile(null);
     setPreview(null);
@@ -175,6 +208,9 @@ export default function CVDocuments() {
       day: 'numeric',
     });
   };
+
+  // ponytail: cache-buster display-only, never stored in DB
+  const displayUrl = cv?.file_data ? `${cv.file_data}${cv.file_data.includes('?') ? '&' : '?'}t=${new Date(cv.updated_at || cv.created_at).getTime()}` : null;
 
   return (
     <div className="space-y-6">
@@ -271,7 +307,7 @@ export default function CVDocuments() {
 
               <div className="relative overflow-hidden rounded-xl border border-edge bg-soft">
                 <div className="cursor-pointer" onClick={() => setOpenPdf(true)}>
-                  <PDFThumbnail pdfUrl={cv.file_data} />
+                  <PDFThumbnail pdfUrl={displayUrl} />
                 </div>
                 <div className="absolute top-2 right-2 bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold z-[3]">
                   PDF
@@ -378,7 +414,7 @@ export default function CVDocuments() {
       )}
 
       <PDFViewerModal
-        pdfUrl={cv?.file_data}
+        pdfUrl={displayUrl}
         isOpen={openPdf}
         onClose={() => setOpenPdf(false)}
         title={cv?.filename || "CV Document"}

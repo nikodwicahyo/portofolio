@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { supabase } from '../supabase'
+import { getSupabase } from '../supabase'
 import Projects from './dashboard/Projects'
 import Certificates from './dashboard/Certificates'
 import Comments from './dashboard/Comments'
@@ -26,9 +26,22 @@ export default function Dashboard() {
   const { theme, toggleTheme } = useTheme()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
+    try {
+      const sb = getSupabase();
+      if (sb) await sb.auth.signOut();
+    } catch {
+      // best-effort: still clear local state below
+    } finally {
+      // Don't leave admin data cached for the next user on a shared machine.
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('dashboard_') || k === 'projects_v2')) localStorage.removeItem(k);
+        }
+      } catch { /* best-effort */ }
+      navigate('/login');
+    }
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full p-5 gap-5">

@@ -35,12 +35,13 @@ const renderPDFToDataUrl = async (url) => {
 
   const pdfData = getPDFData(url);
   const warn = console.warn; console.warn = () => {};
+  let pdf = null;
   try {
     const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
-    const pdf = await loadingTask.promise;
+    pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
 
-    const viewport = page.getViewport({ scale: 1.5 });
+    const viewport = page.getViewport({ scale: 1.0 });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
@@ -49,7 +50,7 @@ const renderPDFToDataUrl = async (url) => {
     const task = page.render({ canvasContext: ctx, viewport });
     await task.promise;
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
     thumbnailCache.set(url, dataUrl);
     if (thumbnailCache.size > CACHE_MAX) {
       const oldest = thumbnailCache.keys().next().value;
@@ -57,6 +58,7 @@ const renderPDFToDataUrl = async (url) => {
     }
     return dataUrl;
   } finally {
+    try { await pdf?.destroy(); } catch { /* already destroyed */ }
     console.warn = warn;
   }
 };

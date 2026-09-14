@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
+import { validateImageFile, removeImage } from "../../services/storage.js";
+import { toStorageKey } from "../../utils/storageKey";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import {
   Plus,
@@ -193,11 +195,14 @@ const ExperienceForm = ({
   const [preview, setPreview] = useState(initial?.logo_url || null);
   const [error, setError] = useState("");
 
+  useEffect(() => () => { if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -342,18 +347,26 @@ export default function Experiences() {
   const fetchExperiences = async (force = false) => {
     const raw = localStorage.getItem("dashboard_experiences_ts");
     if (!force && raw && Date.now() - Number(raw) < 300000) return;
+    const sb = getSupabase();
+    if (!sb) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from("experiences")
-      .select("id,company,position,description,start_date,end_date,location,logo_url,created_at")
-      .order("start_date", { ascending: false });
-    const rows = data || [];
-    setExperiences(rows);
-    setLoading(false);
     try {
-      localStorage.setItem("dashboard_experiences_ts", String(Date.now()));
-      localStorage.setItem("dashboard_experiences", JSON.stringify(rows));
-    } catch { /* storage full */ }
+      const { data, error } = await sb
+        .from("experiences")
+        .select("id,company,position,description,start_date,end_date,location,logo_url,created_at")
+        .order("start_date", { ascending: false });
+      if (error) { console.error("[Experiences] fetch failed:", error.message); return; }
+      const rows = data || [];
+      setExperiences(rows);
+      try {
+        localStorage.setItem("dashboard_experiences_ts", String(Date.now()));
+        localStorage.setItem("dashboard_experiences", JSON.stringify(rows));
+      } catch { /* storage full */ }
+    } catch (err) {
+      console.error("[Experiences] fetch failed:", err?.message || err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -366,9 +379,12 @@ export default function Experiences() {
   }, []);
 
   const uploadLogo = async (f) => {
-    const fileName = `${Date.now()}-${f.name}`;
-    await supabase.storage.from("experience-logos").upload(fileName, f);
-    const { data } = supabase.storage
+    const sb = getSupabase();
+    if (!sb) throw new Error("Supabase not configured.");
+    const fileName = toStorageKey('exp', f.name, 'png');
+    const { error: upErr } = await sb.storage.from("experience-logos").upload(fileName, f);
+    if (upErr) throw upErr;
+    const { data } = sb.storage
       .from("experience-logos")
       .getPublicUrl(fileName);
     return data.publicUrl;
@@ -377,17 +393,30 @@ export default function Experiences() {
   const removeOrphanLogo = async (url) => {
     if (!url) return;
     try {
-      const fileName = url.split("/").pop();
-      if (fileName) await supabase.storage.from("experience-logos").remove([fileName]);
+      await removeImage("experience-logos", url);
     } catch { /* cleanup is best-effort */ }
   };
 
   const handleCreate = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
     let logoUrl = "";
     try {
-      if (file) logoUrl = await uploadLogo(file);
-      const { error } = await supabase.from("experiences").insert({
+      if (file) {
+        try {
+          logoUrl = await uploadLogo(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const { error } = await sb.from("experiences").insert({
         company: form.company,
         position: form.position,
         description: form.description || null,
@@ -409,11 +438,26 @@ export default function Experiences() {
   };
 
   const handleEdit = async (form, file) => {
+    if (uploading) return;
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (file) {
+      const vErr = validateImageFile(file);
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    }
     setUploading(true);
-    let logoUrl = editExperience.logo_url || "";
+    const oldLogo = editExperience.logo_url || "";
+    let logoUrl = oldLogo;
     try {
-      if (file) logoUrl = await uploadLogo(file);
-      const { error } = await supabase
+      if (file) {
+        try {
+          logoUrl = await uploadLogo(file);
+        } catch (upErr) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          return;
+        }
+      }
+      const { error } = await sb
         .from("experiences")
         .update({
           company: form.company,
@@ -427,6 +471,7 @@ export default function Experiences() {
         .eq("id", editExperience.id);
       if (error) throw error;
       setEditExperience(null);
+      if (file && oldLogo && oldLogo !== logoUrl) await removeImage("experience-logos", oldLogo);
       fetchExperiences(true);
       notifyPortfolioChanged();
     } catch (err) {
@@ -450,7 +495,12 @@ export default function Experiences() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
-    await supabase.from("experiences").delete().eq("id", id);
+    const sb = getSupabase();
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const target = experiences.find((e) => e.id === id);
+    const { error } = await sb.from("experiences").delete().eq("id", id);
+    if (error) { Swal.fire({ icon: 'error', title: 'Failed', text: error.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (target?.logo_url) await removeImage("experience-logos", target.logo_url);
     fetchExperiences(true);
     notifyPortfolioChanged();
   };

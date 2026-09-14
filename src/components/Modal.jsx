@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Eye, ArrowRight, ExternalLink } from 'lucide-react';
+import { safeExternalUrl } from '../utils/fileType';
 
 const ProjectCardModal = ({ title, description, link }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const safeLink = safeExternalUrl(link);
 
   return (
     <>
@@ -32,14 +34,16 @@ const ProjectCardModal = ({ title, description, link }) => {
             <h2 className="mb-4 text-2xl font-bold">{title}</h2>
             <p className="mb-6 text-secondary">{description}</p>
             <div className="flex justify-end space-x-4">
-              <a
-                href={link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-md bg-primary px-4 py-2 font-medium text-invert-text hover:bg-invert-hover transition-colors duration-200"
-              >
-                Live Demo <ExternalLink className="ml-2 inline-block h-5 w-5" />
-              </a>
+              {safeLink && (
+                <a
+                  href={safeLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-primary px-4 py-2 font-medium text-invert-text hover:bg-invert-hover transition-colors duration-200"
+                >
+                  Live Demo <ExternalLink className="ml-2 inline-block h-5 w-5" />
+                </a>
+              )}
               <button
                 className="rounded-md bg-soft-strong px-4 py-2 font-medium hover:bg-soft-strong transition-colors duration-200"
                 onClick={() => setIsOpen(false)}

@@ -12,7 +12,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import Footer from "./components/Footer";
 
 import Login from "./Pages/Login";
-import Dashboard from "./Pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { prefetchPortfolioData, clearStaleCache } from "./utils/portfolioPrefetch";
@@ -23,6 +22,8 @@ const ContactPage = lazy(() => import("./Pages/Contact"));
 const ProjectDetails = lazy(() => import("./components/ProjectDetail"));
 const WelcomeScreen = lazy(() => import("./Pages/WelcomeScreen"));
 const NotFoundPage = lazy(() => import("./Pages/404"));
+const ThankYouPage = lazy(() => import("./Pages/ThankYou"));
+const Dashboard = lazy(() => import("./Pages/Dashboard"));
 
 const pageVariants = {
   initial: { opacity: 0, y: 24 },
@@ -67,9 +68,12 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
 
 const ProjectPageLayout = () => (
   <>
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <ProjectDetails />
-    </Suspense>
+    <Navbar />
+    <div className="pt-16">
+      <Suspense fallback={<div className="min-h-screen" />}>
+        <ProjectDetails />
+      </Suspense>
+    </div>
     <Footer />
   </>
 );
@@ -81,12 +85,39 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    initRealtimeSync();
     clearStaleCache();
     AOS.init({ once: false, offset: 10 });
-    const onResize = () => AOS.refresh();
+    let refreshTimer;
+    const onResize = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => AOS.refresh(), 150);
+    };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+
+    // Off the critical path: socket + prefetch run when the browser is idle.
+    // The 400ms prefetch delay also lets the visible tab's own fetch finish
+    // first, so prefetch skips it instead of duplicating the request.
+    let idleId;
+    let prefetchTimer;
+    let stopRealtime;
+    const runIdle = () => {
+      try { stopRealtime = initRealtimeSync(); } catch { /* noop */ }
+      prefetchTimer = setTimeout(() => { prefetchPortfolioData(); }, 400);
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(runIdle, { timeout: 3000 });
+    } else {
+      prefetchTimer = setTimeout(runIdle, 500);
+    }
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(refreshTimer);
+      clearTimeout(prefetchTimer);
+      if (idleId && typeof window.cancelIdleCallback === "function") {
+        try { window.cancelIdleCallback(idleId); } catch { /* noop */ }
+      }
+      try { stopRealtime?.(); } catch { /* noop */ }
+    };
   }, []);
 
   useEffect(() => {
@@ -97,7 +128,7 @@ function App() {
   }, [showWelcome]);
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary resetKey={location.pathname}>
     <HelmetProvider>
       <div className="pointer-events-none">
   <AnimatedBackground />
@@ -107,7 +138,8 @@ function App() {
           <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
           <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
-          <Route path="/dashboard/*" element={<PageTransition><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
+          <Route path="/thank-you" element={<PageTransition><Suspense fallback={null}><ThankYouPage /></Suspense></PageTransition>} />
+          <Route path="/dashboard/*" element={<PageTransition><ProtectedRoute><Suspense fallback={<div className="min-h-screen" />}><Dashboard /></Suspense></ProtectedRoute></PageTransition>} />
           <Route path="*" element={<PageTransition><Suspense fallback={null}><NotFoundPage /></Suspense></PageTransition>} />
         </Routes>
       </AnimatePresence>

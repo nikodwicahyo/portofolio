@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from "../supabase";
+import { getSupabase } from "../supabase";
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, LogIn, Sparkles, Eye, EyeOff } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -14,18 +14,25 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const sb = getSupabase();
+    if (!sb) {
+      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Service unavailable. Please try again later.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      setLoading(false);
+      return
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password })
     if (error) {
-      Swal.fire({ icon: 'error', title: 'Login Failed', text: error.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      // Generic message: avoids user-enumeration via provider error strings.
+      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Invalid email or password.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
       setLoading(false);
       return
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await sb
       .from('profiles').select('role').eq('id', data.user.id).single()
 
     if (profile?.role !== 'admin') {
-      await supabase.auth.signOut()
+      await sb.auth.signOut()
       Swal.fire({ icon: 'error', title: 'Access Denied', text: 'You do not have admin access.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
       setLoading(false)
       return
@@ -57,6 +64,7 @@ export default function Login() {
                   <Mail className="w-4 h-4 text-muted ml-4 shrink-0" />
                   <input
                     type="email"
+                    autoComplete="username"
                     placeholder="admin@example.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -72,6 +80,7 @@ export default function Login() {
                   <Lock className="w-4 h-4 text-muted ml-4 shrink-0" />
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}

@@ -1,13 +1,44 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Access environment variables using import.meta.env for Vite
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL; 
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL;
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Supabase URL:", supabaseUrl);
-  console.error("Supabase Anon Key:", supabaseKey);
-  throw new Error("Supabase URL and Anon Key are required. Check your .env file and ensure they are prefixed with VITE_ and the dev server was restarted.");
+let _client = null;
+let _warned = false;
+
+export function isSupabaseConfigured() {
+  return Boolean(url && key);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+function warnOnce() {
+  if (_warned) return;
+  _warned = true;
+  console.error(
+    'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env and restart the dev server.'
+  );
+}
+
+// Lazy client: never throws at import time so ErrorBoundary can render
+// a useful UI instead of a module-eval white screen.
+export function getSupabase() {
+  if (_client) return _client;
+  if (!isSupabaseConfigured()) {
+    warnOnce();
+    return null;
+  }
+  _client = createClient(url, key);
+  return _client;
+}
+
+// Back-compat: existing `import { supabase }` keeps working.
+// Accessing it without config warns instead of crashing the bundle.
+export const supabase = new Proxy(
+  {},
+  {
+    get(_t, prop) {
+      const c = getSupabase();
+      if (!c) throw new Error('Supabase not configured. Check VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.');
+      return c[prop];
+    },
+  }
+);

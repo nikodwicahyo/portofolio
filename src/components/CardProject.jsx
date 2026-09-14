@@ -2,17 +2,21 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
+import { safeExternalUrl } from "../utils/fileType";
+import { optimizedImageUrl } from "../utils/image";
 import LazyImage from "./LazyImage";
 
 const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) => {
+  const safeLink = safeExternalUrl(ProjectLink);
   return (
     <div className="group relative w-full">
       <div className="relative overflow-hidden rounded-xl bg-surface border border-edge transition-all duration-300 hover:border-edge-strong hover:bg-elevated">
         <div className="relative p-4 sm:p-5 z-10">
           <div className="relative overflow-hidden rounded-lg">
             <LazyImage
-              src={Img}
+              src={optimizedImageUrl(Img, { width: 800 })}
               alt={Title}
+              aspectRatio="16/8"
               className="w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105"
             />
           </div>
@@ -27,9 +31,9 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
             </p>
 
             <div className="pt-3 sm:pt-4 flex items-center justify-between gap-2 flex-wrap">
-              {ProjectLink ? (
+              {safeLink ? (
                 <a
-                  href={ProjectLink}
+                  href={safeLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 sm:gap-2 text-primary hover:text-primary transition-colors duration-200 text-xs sm:text-sm"

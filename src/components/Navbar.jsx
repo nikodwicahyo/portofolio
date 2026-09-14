@@ -16,8 +16,11 @@ const Navbar = () => {
     const { theme, toggleTheme } = useTheme();
     
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
+        let rafId = 0;
+        const update = () => {
+            rafId = 0;
+            const nextScrolled = window.scrollY > 20;
+            setScrolled(prev => (prev === nextScrolled ? prev : nextScrolled));
             const sections = navItems.map(item => {
                 const section = document.querySelector(item.href);
                 if (section) {
@@ -37,13 +40,20 @@ const Navbar = () => {
             );
 
             if (active) {
-                setActiveSection(active.id);
+                setActiveSection(prev => (prev === active.id ? prev : active.id));
             }
+        };
+        const handleScroll = () => {
+            if (rafId) return;
+            rafId = requestAnimationFrame(update);
         };
 
         window.addEventListener("scroll", handleScroll, { passive: true });
         handleScroll();
-        return () => window.removeEventListener("scroll", handleScroll);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            if (rafId) cancelAnimationFrame(rafId);
+        };
     }, []);
 
     useEffect(() => {
@@ -52,6 +62,9 @@ const Navbar = () => {
         } else {
             document.body.style.overflow = 'unset';
         }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
     }, [isOpen]);
 
     const scrollToSection = (e, href) => {

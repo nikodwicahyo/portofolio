@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { supabase } from "../../supabase";
+import { getSupabase } from "../../supabase";
+import { validateImageFile, validatePdfFile, hasPdfMagic, storagePathFromUrl } from "../../services/storage.js";
+import { toStorageKey } from "../../utils/storageKey";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { isPdfUrl, isBase64DataUrl } from "../../utils/fileType";
 import { Award, Upload, Trash2, ImageIcon, Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -134,14 +136,22 @@ export default function Certificates() {
         }
       } catch { /* invalid cache */ }
     }
+    const sb = getSupabase(); if (!sb) return;
     setLoading(true)
-    const { data } = await supabase.from('certificates').select('id,img,created_at').order('created_at', { ascending: false })
-    const rows = data || []
-    setCerts(rows)
-    setLoading(false)
     try {
-      localStorage.setItem("dashboard_certificates", JSON.stringify({ data: rows, ts: Date.now() }))
-    } catch { /* storage full */ }
+      const { data, error } = await sb.from('certificates').select('id,img,created_at').order('created_at', { ascending: false })
+      if (error) throw error;
+      const rows = data || []
+      setCerts(rows)
+      try {
+        localStorage.setItem("dashboard_certificates", JSON.stringify({ data: rows, ts: Date.now() }))
+      } catch { /* storage full */ }
+    } catch (err) {
+      console.error('Failed to fetch certificates:', err)
+      // ponytail: keep existing list on failure, never wipe
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -172,21 +182,49 @@ export default function Certificates() {
     }
   }
 
+  // ponytail: revoke stale object URL on change/unmount only
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+
   const isSelectedPdf = file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf')
 
   const uploadCertificate = async () => {
     if (!file) return
+    const sb = getSupabase(); if (!sb) return;
+    const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      const validationError = validateImageFile(file)
+      if (validationError) {
+        Swal.fire({ icon: 'error', title: 'Invalid File', text: validationError, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+        return
+      }
+    } else {
+      const pdfError = validatePdfFile(file)
+      if (pdfError) {
+        Swal.fire({ icon: 'error', title: 'Invalid File', text: pdfError, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+        return
+      }
+      if (!(await hasPdfMagic(file))) {
+        Swal.fire({ icon: 'error', title: 'Invalid File', text: 'Invalid PDF file.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+        return
+      }
+    }
     setUploading(true)
     try {
-      const fileName = `cert-${Date.now()}-${file.name}`
-      const { error: uploadError } = await supabase.storage.from('certificate-images').upload(fileName, file)
-      if (uploadError) throw new Error('Storage upload failed: ' + uploadError.message)
+      const fileName = toStorageKey('cert', file.name, isPdf ? 'pdf' : 'png')
+      const { error: uploadError } = await sb.storage.from('certificate-images').upload(fileName, file)
+      if (uploadError) {
+        Swal.fire({ icon: 'error', title: 'Upload Failed', text: uploadError.message || 'Storage upload failed.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+        return
+      }
 
-      const { data } = supabase.storage.from('certificate-images').getPublicUrl(fileName)
+      const { data } = sb.storage.from('certificate-images').getPublicUrl(fileName)
       const imgUrl = data.publicUrl
 
-      const { error: insertError } = await supabase.from('certificates').insert({ img: imgUrl })
-      if (insertError) throw insertError
+      const { error: insertError } = await sb.from('certificates').insert({ img: imgUrl })
+      if (insertError) {
+        Swal.fire({ icon: 'error', title: 'Upload Failed', text: insertError.message || 'Failed to save certificate.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+        return
+      }
 
       setFile(null)
       setPreview(null)
@@ -221,21 +259,24 @@ export default function Certificates() {
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return
+    const sb = getSupabase(); if (!sb) return;
 
     if (imgUrl && !isBase64DataUrl(imgUrl)) {
       try {
-        const url = new URL(imgUrl)
-        const pathParts = url.pathname.split('/')
-        const fileName = pathParts[pathParts.length - 1]
-        if (fileName) {
-          await supabase.storage.from('certificate-images').remove([fileName])
+        const storagePath = storagePathFromUrl(imgUrl)
+        if (storagePath) {
+          await sb.storage.from('certificate-images').remove([storagePath])
         }
       } catch {
         console.warn('Failed to delete from storage')
       }
     }
 
-    await supabase.from('certificates').delete().eq('id', id)
+    const { error: deleteError } = await sb.from('certificates').delete().eq('id', id)
+    if (deleteError) {
+      Swal.fire({ icon: 'error', title: 'Delete Failed', text: deleteError.message || 'Failed to delete certificate.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+      return
+    }
     fetchCerts(true)
     notifyPortfolioChanged()
   }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react"
+import { useState, useEffect, useCallback, useRef, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram } from "lucide-react"
 import LazyImage from "../components/LazyImage"
@@ -73,18 +73,12 @@ const SOCIAL_LINKS = [
   { icon: Mail, link: "mailto:nikodwchy@gmail.com", label: "Email" }
 ];
 
-const Home = () => {
+const TypewriterText = memo(() => {
   const [text, setText] = useState("")
   const [isTyping, setIsTyping] = useState(true)
   const [wordIndex, setWordIndex] = useState(0)
   const [charIndex, setCharIndex] = useState(0)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true);
-    return () => setIsLoaded(false);
-  }, []);
+  const pauseRef = useRef(null)
 
   const handleTyping = useCallback(() => {
     if (isTyping) {
@@ -92,7 +86,7 @@ const Home = () => {
         setText(prev => prev + WORDS[wordIndex][charIndex]);
         setCharIndex(prev => prev + 1);
       } else {
-        setTimeout(() => setIsTyping(false), PAUSE_DURATION);
+        pauseRef.current = setTimeout(() => setIsTyping(false), PAUSE_DURATION);
       }
     } else {
       if (charIndex > 0) {
@@ -112,6 +106,30 @@ const Home = () => {
     );
     return () => clearTimeout(timeout);
   }, [handleTyping, isTyping]);
+
+  useEffect(() => () => {
+    if (pauseRef.current) clearTimeout(pauseRef.current);
+  }, []);
+
+  return (
+    <>
+      <span className="text-xl md:text-2xl text-primary font-light">
+        {text}
+      </span>
+      <span className="w-[3px] h-6 bg-primary ml-1 animate-blink"></span>
+    </>
+  );
+});
+TypewriterText.displayName = "TypewriterText";
+
+const Home = () => {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+
+  useEffect(() => {
+    setIsLoaded(true);
+    return () => setIsLoaded(false);
+  }, []);
 
   return (
     <>
@@ -154,10 +172,7 @@ const Home = () => {
 
                   {/* Typing Effect */}
                   <div className="h-8 flex items-center" data-aos="fade-up" data-aos-delay="800">
-                    <span className="text-xl md:text-2xl text-primary font-light">
-                      {text}
-                    </span>
-                    <span className="w-[3px] h-6 bg-primary ml-1 animate-blink"></span>
+                    <TypewriterText />
                   </div>
 
                   {/* Description */}
@@ -198,7 +213,7 @@ const Home = () => {
                 <div className="relative w-full opacity-90">
                   <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
                     <LazyImage
-                      src="Coding.gif"
+                      src="Animation2.gif"
                       alt="Developer Animation"
                       className={`w-full h-full object-contain transition-all duration-500 ${
                         isHovering 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'lucide-react';
-import { supabase } from '../supabase';
+import { getSupabase } from '../supabase';
+import { formatDateFull } from '../utils/format.js';
+import { submitComment } from '../utils/submitComment.js';
 
 
 const Comment = memo(({ comment, formatDate, isPinned = false }) => (
@@ -142,62 +144,55 @@ const Komentar = () => {
     const [pinnedComments, setPinnedComments] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [loadError, setLoadError] = useState('');
 
-    // Fetch pinned comments
-    useEffect(() => {
-        const fetchPinnedComments = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('portfolio_comments')
-                    .select('id,user_name,content,profile_image,created_at,is_pinned')
-                    .eq('is_pinned', true)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error('Error fetching pinned comments:', error);
-                    return;
-                }
-
-                setPinnedComments(data || []);
-            } catch (error) {
-                console.error('Error fetching pinned comments:', error);
-            }
-        };
-
-        fetchPinnedComments();
-    }, []);
-
-    // Fetch regular comments (excluding pinned) and set up real-time subscription
-    useEffect(() => {
-        const fetchComments = async () => {
-            const { data, error } = await supabase
+    const fetchAllComments = useCallback(async () => {
+        const sb = getSupabase(); if (!sb) { setLoadError('Failed to load comments'); return; }
+        try {
+            const { data, error } = await sb
                 .from('portfolio_comments')
                 .select('id,user_name,content,profile_image,created_at,is_pinned')
-                .eq('is_pinned', false)
-                .order('created_at', { ascending: false });
-            
+                .order('created_at', { ascending: false })
+                .limit(500); // generous bound: text rows are tiny; keeps wall complete
+
             if (error) {
                 console.error('Error fetching comments:', error);
+                setLoadError('Failed to load comments');
                 return;
             }
-            
-            setComments(data || []);
-        };
 
-        fetchComments();
+            setLoadError('');
+            // ponytail: one query, client-split; pinned render first
+            setPinnedComments((data || []).filter((c) => c.is_pinned));
+            setComments((data || []).filter((c) => !c.is_pinned));
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+            setLoadError('Failed to load comments');
+        }
+    }, []);
+
+    const retryLoad = useCallback(() => {
+        setLoadError('');
+        fetchAllComments();
+    }, [fetchAllComments]);
+
+    // Fetch all comments and set up real-time subscription
+    useEffect(() => {
+        fetchAllComments();
 
         // Set up real-time subscription
-        const subscription = supabase
+        const sb = getSupabase();
+        if (!sb) return undefined;
+        const subscription = sb
             .channel('portfolio_comments')
             .on('postgres_changes', 
                 { 
                     event: '*', 
                     schema: 'public', 
-                    table: 'portfolio_comments',
-                    filter: 'is_pinned=eq.false'
+                    table: 'portfolio_comments'
                 }, 
                 () => {
-                    fetchComments(); // Refresh comments when changes occur
+                    fetchAllComments(); // Refresh comments when changes occur
                 }
             )
             .subscribe();
@@ -205,34 +200,22 @@ const Komentar = () => {
         return () => {
             subscription.unsubscribe();
         };
-    }, []);
+    }, [fetchAllComments]);
 
     const handleCommentSubmit = useCallback(async ({ newComment, userName }) => {
+        if (isSubmitting) return;
         setError('');
         setIsSubmitting(true);
         
         try {
-            const { error } = await supabase
-                .from('portfolio_comments')
-                .insert([
-                    {
-                        content: newComment,
-                        user_name: userName,
-                        is_pinned: false,
-                        created_at: new Date().toISOString()
-                    }
-                ]);
-
-            if (error) {
-                throw error;
-            }
+            await submitComment({ userName, content: newComment });
         } catch (error) {
-            setError('Failed to post comment. Please try again.');
+            setError(error?.message || 'Failed to post comment. Please try again.');
             console.error('Error adding comment: ', error);
         } finally {
             setIsSubmitting(false);
         }
-    }, []);
+    }, [isSubmitting]);
 
     const formatDate = useCallback((timestamp) => {
         if (!timestamp) return '';
@@ -247,11 +230,7 @@ const Komentar = () => {
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
 
-        return new Intl.DateTimeFormat('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        }).format(date);
+        return formatDateFull(timestamp);
     }, []);
 
     // Calculate total comments (pinned + regular)
@@ -295,6 +274,15 @@ const Komentar = () => {
                     data-aos="fade-up"
                     data-aos-delay="200"
                 >
+                    {loadError ? (
+                        <div className="text-center py-8" data-aos="fade-in">
+                            <p className="text-secondary text-sm mb-3">Failed to load comments</p>
+                            <button onClick={retryLoad} className="px-4 py-1.5 rounded-xl bg-soft border border-edge text-primary text-xs hover:bg-soft-strong transition-colors">
+                                Retry
+                            </button>
+                        </div>
+                    ) : (
+                    <>
                     {pinnedComments.map((comment, idx) => (
                         <div key={comment.id} data-aos="fade-down" data-aos-duration="800">
                             <Comment
@@ -322,6 +310,8 @@ const Komentar = () => {
                                 isPinned={false}
                             />
                         ))
+                    )}
+                    </>
                     )}
                 </div>
             </div>

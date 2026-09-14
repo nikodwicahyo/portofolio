@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -16,8 +16,9 @@ import {
   Code,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { supabase } from "../supabase";
+import { getSupabase } from "../supabase";
 import { normalizeSlug, toSlug } from "../utils/slug";
+import { safeExternalUrl } from "../utils/fileType";
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 
@@ -115,6 +116,7 @@ const showUnavailable = (title, text) => {
 };
 
 const ProjectActionButton = ({ href, onClick, className, icon: Icon, label }) => {
+  const safeHref = safeExternalUrl(href);
   const content = (
     <>
       <Icon className="relative w-4 h-4 md:w-5 md:h-5 group-hover:rotate-12 transition-transform" />
@@ -122,9 +124,9 @@ const ProjectActionButton = ({ href, onClick, className, icon: Icon, label }) =>
     </>
   );
   const shared = `group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 font-medium rounded-xl transition-all duration-300 text-sm md:text-base ${className}`;
-  if (href) {
+  if (safeHref) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={shared}>
+      <a href={safeHref} target="_blank" rel="noopener noreferrer" className={shared}>
         {content}
       </a>
     );
@@ -142,6 +144,7 @@ const ProjectDetails = () => {
   const location = useLocation();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const reqId = useRef(0);
   const findProject = useCallback((projects) => {
     const target = normalizeSlug(slug);
     return projects.find((p) => toSlug(p.title) === target);
@@ -168,11 +171,17 @@ const ProjectDetails = () => {
     };
 
     let storedProjects = [];
+    let cacheFresh = false;
     try {
       const raw = localStorage.getItem(PROJECTS_CACHE_KEY);
       if (raw) {
         const p = JSON.parse(raw);
-        storedProjects = Array.isArray(p) ? p : p.data ?? [];
+        if (Array.isArray(p)) {
+          storedProjects = p;
+        } else if (Array.isArray(p.data)) {
+          storedProjects = p.data;
+          cacheFresh = p.data.length > 0 && (Date.now() - p.timestamp < 86400000);
+        }
       }
     } catch { storedProjects = []; }
     const cached = findProject(storedProjects);
@@ -180,31 +189,37 @@ const ProjectDetails = () => {
       applyProject(cached);
       setLoading(false);
     }
-
     const fetchProjects = async () => {
+      const id = ++reqId.current;
+      const sb = getSupabase();
+      if (!sb) { if (!cancelled) setLoading(false); return; }
       try {
-        const { data, error } = await supabase
+        const { data, error } = await sb
           .from("projects")
           .select("id,title,description,img,link,github,tech_stack,features")
           .order("id", { ascending: false });
 
         if (error) throw error;
 
+        if (cancelled || id !== reqId.current) return;
         if (data) {
           const found = findProject(data);
           if (found) applyProject(found);
           try {
-            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data));
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
           } catch { /* storage full */ }
         }
       } catch (err) {
+        if (cancelled || id !== reqId.current) return;
         console.error("Error fetching project:", err.message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && id === reqId.current) setLoading(false);
       }
     };
 
-    fetchProjects();
+    // ponytail: fresh cache = skip network fetch, keep paint identical
+    if (!(cached && cacheFresh)) fetchProjects();
+    else if (!cancelled) setLoading(false);
     const unsub = onPortfolioDataUpdated((table) => {
       if (table === "projects") fetchProjects();
     });
@@ -276,20 +291,18 @@ const ProjectDetails = () => {
         <meta property="og:url" content={projectUrl} />
         <meta property="og:type" content="website" />
         {project.img && <meta property="og:image" content={project.img} />}
-        <script type="application/ld+json">{`
-          {
-            "@context": "https://schema.org",
-            "@type": "CreativeWork",
-            "name": "${project.title}",
-            "description": "${project.description?.replace(/"/g, '\\"')}",
-            "url": "${projectUrl}",
-            "author": {
-              "@type": "Person",
-              "name": "Niko Dwicahyo Widiyanto",
-              "url": "https://ekizr.com"
-            }
-          }
-        `}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'CreativeWork',
+          name: project.title,
+          description: project.description,
+          url: projectUrl,
+          author: {
+            '@type': 'Person',
+            name: 'Niko Dwicahyo Widiyanto',
+            url: 'https://ekizr.com',
+          },
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-bg px-[2%] sm:px-0 relative overflow-hidden">

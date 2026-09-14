@@ -1,5 +1,5 @@
 import { useEffect, useState, memo, useMemo } from "react"
-import { supabase } from "../supabase"
+import { getSupabase } from "../supabase"
 import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
@@ -94,14 +94,31 @@ const StatCard = memo(({ icon: Icon, value, label, description, animation }) => 
 ));
 StatCard.displayName = "StatCard";
 
+const CACHE_TTL = 86400000;
+const safeLen = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return 0;
+    const p = JSON.parse(raw);
+    const arr = Array.isArray(p) ? p : p.data;
+    if (!Array.isArray(arr)) return 0;
+    if (!Array.isArray(p) && p.timestamp && Date.now() - p.timestamp > CACHE_TTL) return -1; // stale
+    return arr.length;
+  } catch { return 0; }
+};
+
 const AboutPage = () => {
   const [counts, setCounts] = useState(() => {
-    const p = Number(localStorage.getItem("about_projects_count")) ||
-              (JSON.parse(localStorage.getItem(PROJECTS_CACHE_KEY) || "[]").length) || 0;
-    const c = Number(localStorage.getItem("about_certificates_count")) ||
-              (JSON.parse(localStorage.getItem("certificates") || "[]").length) || 0;
-    const e = Number(localStorage.getItem("about_years_experience")) || 0;
-    return { projects: p, certificates: c, yearsExperience: e };
+    try {
+      const p = Number(localStorage.getItem("about_projects_count")) ||
+                (safeLen(PROJECTS_CACHE_KEY) > 0 ? safeLen(PROJECTS_CACHE_KEY) : 0) || 0;
+      const c = Number(localStorage.getItem("about_certificates_count")) ||
+                (safeLen("certificates") > 0 ? safeLen("certificates") : 0) || 0;
+      const e = Number(localStorage.getItem("about_years_experience")) || 0;
+      return { projects: p, certificates: c, yearsExperience: e };
+    } catch {
+      return { projects: 0, certificates: 0, yearsExperience: 0 };
+    }
   });
   const [countVersion, setCountVersion] = useState(0);
 
@@ -112,19 +129,31 @@ const AboutPage = () => {
   useEffect(() => {
     let cancelled = false;
     const fetchCounts = async () => {
+      const sb = getSupabase();
+      if (!sb) return;
       try {
-        const [pResult, cResult, eResult] = await Promise.all([
-          supabase.from("projects").select("id", { count: "exact", head: true }),
-          supabase.from("certificates").select("id", { count: "exact", head: true }),
-          supabase.from("experiences").select("start_date").order("start_date", { ascending: true }).limit(1),
-        ]);
+        // ponytail: counts from fresh tab caches; always keep earliest-experience query
+        const cachedP = safeLen(PROJECTS_CACHE_KEY);
+        const cachedC = safeLen("certificates");
+        const queries = [];
+        const keys = [];
+        if (cachedP <= 0) { queries.push(sb.from("projects").select("id", { count: "exact", head: true })); keys.push("p"); }
+        if (cachedC <= 0) { queries.push(sb.from("certificates").select("id", { count: "exact", head: true })); keys.push("c"); }
+        queries.push(sb.from("experiences").select("start_date").order("start_date", { ascending: true }).limit(1)); keys.push("e");
+        const results = await Promise.all(queries);
+        const byKey = Object.fromEntries(keys.map((k, i) => [k, results[i]]));
+        const pResult = byKey.p, cResult = byKey.c, eResult = byKey.e;
         if (cancelled) return;
-        const projectCount = pResult.error
-          ? Number(localStorage.getItem("about_projects_count")) || 0
-          : pResult.count;
-        const certCount = cResult.error
-          ? Number(localStorage.getItem("about_certificates_count")) || 0
-          : cResult.count;
+        const projectCount = pResult
+          ? (pResult.error
+            ? Number(localStorage.getItem("about_projects_count")) || 0
+            : pResult.count)
+          : cachedP;
+        const certCount = cResult
+          ? (cResult.error
+            ? Number(localStorage.getItem("about_certificates_count")) || 0
+            : cResult.count)
+          : cachedC;
         let yearsExp = Number(localStorage.getItem("about_years_experience")) || 0;
         if (!eResult.error && eResult.data && eResult.data.length > 0) {
           const earliest = new Date(eResult.data[0].start_date);

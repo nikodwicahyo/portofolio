@@ -38,7 +38,8 @@ export const isBase64DataUrl = (url) => {
 
 export const getFileType = (url) => {
   if (isPdfUrl(url)) return "pdf";
-  return "image";
+  if (isImageUrl(url) || isBase64DataUrl(url)) return "image";
+  return "unknown";
 };
 
 export const getBase64MimeType = (url) => {
@@ -49,4 +50,16 @@ export const getBase64MimeType = (url) => {
   } catch {
     return null;
   }
+};
+
+// Allow-list for external links rendered into <a href>.
+// Returns a safe URL or null (caller renders plain text instead).
+// Blocks javascript:, data:, vbscript:, blob: — bare domains get https://.
+export function safeExternalUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const t = url.trim();
+  if (!t) return null;
+  if (/^(https?:\/\/|mailto:)/i.test(t)) return t;
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?(\/\S*)?$/i.test(t)) return `https://${t}`;
+  return null;
 };

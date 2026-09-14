@@ -9,11 +9,17 @@ export default function PresenceWidget() {
   useEffect(() => {
     if (!PRESENCE_API) return;
 
+    let cancelled = false;
+    let controller = null;
+
     const fetchPresence = async () => {
+      if (document.visibilityState !== "visible") return;
+      controller = new AbortController();
       try {
-        const res = await fetch(PRESENCE_API);
+        const res = await fetch(PRESENCE_API, { signal: controller.signal });
         if (!res.ok) return;
         const data = await res.json();
+        if (cancelled) return;
 
         const normalized = (data.activities || [])
           .slice(0, 2)
@@ -52,14 +58,24 @@ export default function PresenceWidget() {
           });
 
         setActivities(normalized);
-      } catch {
+      } catch (e) {
+        if (cancelled || e?.name === "AbortError") return;
         // silently fail
       }
     };
 
     fetchPresence();
-    const interval = setInterval(fetchPresence, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchPresence, 60000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchPresence();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      cancelled = true;
+      if (controller) controller.abort();
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   if (!activities.length) return null;

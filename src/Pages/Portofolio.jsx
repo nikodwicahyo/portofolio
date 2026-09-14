@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 
-import { supabase } from "../supabase";
+import { getSupabase } from "../supabase";
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
+import { formatDateShort, formatDateLong } from "../utils/format";
 
 import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
@@ -69,10 +70,7 @@ function a11yProps(index) {
 // ponytail: inline components kept to avoid prop threading overhead
 
 const ExperienceCard = memo(({ exp, onSelect }) => {
-  const fmt = (d) => {
-    if (!d) return "Present";
-    return new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  };
+  const fmt = (d) => formatDateShort(d);
   return (
     <div className="relative group cursor-pointer" onClick={() => onSelect(exp)}>
       <div className="relative bg-surface border border-edge rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:border-edge-strong hover:bg-elevated">
@@ -121,10 +119,7 @@ const ExperienceCard = memo(({ exp, onSelect }) => {
 
 const ExperienceModal = ({ experience, onClose }) => {
   if (!experience) return null;
-  const fmt = (d) => {
-    if (!d) return "Present";
-    return new Date(d).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  };
+  const fmt = (d) => formatDateLong(d);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose} style={{ animation: 'fadeIn 0.2s ease-out' }}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" style={{ animation: 'fadeIn 0.2s ease-out' }} />
@@ -214,8 +209,7 @@ const ExpShimmer = ({ count = 3 }) => (
   </div>
 );
 
-const ExperienceTimeline = memo(({ experiences, onSelect, visited }) => {
-  const isMobile = window.innerWidth < 768;
+const ExperienceTimeline = memo(({ experiences, onSelect, visited, isMobile = false }) => {
   return (
   <div className="relative">
     <div className="absolute left-4 sm:left-6 md:left-1/2 top-0 w-0.5 h-full bg-soft-strong md:-translate-x-1/2" />
@@ -247,10 +241,11 @@ const ExperienceTimeline = memo(({ experiences, onSelect, visited }) => {
 );});
 ExperienceTimeline.displayName = "ExperienceTimeline";
 
+// Single source of truth: order matches UI Tabs [Experiences, Projects, Certificates, Tech].
 const TAB_META = [
+  { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
   { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
   { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
-  { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
   { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
 ];
 
@@ -280,6 +275,13 @@ const TIME_SLOTS = [5000, 10000, 15000];
 
   const [state, setState] = useState(initial);
   const fetching = useRef({});
+  const reqId = useRef({});
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const cache = (key, data) => {
     if (data.length === 0) return;
@@ -292,10 +294,20 @@ const TIME_SLOTS = [5000, 10000, 15000];
   };
 
   const fetchTab = useCallback(async (key, retries = 2, force = false) => {
-    if (fetching.current[key]) return;
+    if (fetching.current[key] && !force) return;
     fetching.current[key] = true;
+    const myReq = (reqId.current[key] = (reqId.current[key] || 0) + 1);
     const meta = TAB_META.find(t => t.key === key);
     if (!meta) { fetching.current[key] = false; return; }
+
+    const sb = getSupabase();
+    if (!sb) {
+      if (mounted.current && reqId.current[key] === myReq) {
+        setState(prev => ({ ...prev, [key]: { ...prev[key], loading: false, error: 'Supabase not configured.', fetched: true } }));
+      }
+      fetching.current[key] = false;
+      return;
+    }
 
     try {
       const raw = localStorage.getItem(cacheKey(key));
@@ -310,19 +322,24 @@ const TIME_SLOTS = [5000, 10000, 15000];
     setState(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      if (!mounted.current || reqId.current[key] !== myReq) { fetching.current[key] = false; return; }
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), TIME_SLOTS[attempt] || 15000);
       try {
-        const { data, error } = await supabase.from(key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
+        let q = sb.from(key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
+        if (typeof q.abortSignal === 'function') q = q.abortSignal(ctrl.signal);
+        const { data, error } = await q;
         clearTimeout(timer);
         if (error) throw error;
         if (data === null) throw new Error(`Supabase returned null for "${key}"`);
+        if (!mounted.current || reqId.current[key] !== myReq) { fetching.current[key] = false; return; }
         setState(prev => ({ ...prev, [key]: { data, loading: false, error: null, fetched: true } }));
         cache(key, data);
         fetching.current[key] = false;
         return;
       } catch (e) {
         clearTimeout(timer);
+        if (!mounted.current || reqId.current[key] !== myReq) { fetching.current[key] = false; return; }
         const ms = TIME_SLOTS[attempt] || 15000;
         const msg = e.name === 'AbortError' ? `Request timed out (${ms / 1000}s)` : e.message;
         console.error(`[${key}] attempt ${attempt + 1}/${retries + 1} failed:`, msg);
@@ -372,13 +389,17 @@ export default function FullWidthTabs() {
   const { data: techStacks, loading: techLoading, error: techError, fetched: techFetched } = tabData.tech_stacks;
 
   const [value, setValue] = useState(() => {
-    const saved = sessionStorage.getItem('portfolioTab');
-    return saved ? Number(saved) : 0;
+    try {
+      const n = Number(sessionStorage.getItem('portfolioTab'));
+      return Number.isInteger(n) && n >= 0 && n < TAB_META.length ? n : 0;
+    } catch {
+      return 0;
+    }
   });
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllCertificates, setShowAllCertificates] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
   const [visitedTabs, setVisitedTabs] = useState(() => new Set());
   const prevTabRef = useRef(value);
@@ -408,15 +429,17 @@ export default function FullWidthTabs() {
   }, []);
 
   useEffect(() => {
-    for (const { key } of TAB_META) {
-      fetchTab(key, 2, true);
-    }
+    // Fetch visible tab from cache-first; others load on demand/prefetch.
+    // ponytail: no force-all thundering fetch on mount.
+    const key = TAB_META[value]?.key || TAB_META[0].key;
+    fetchTab(key, 2, false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const key = TAB_META[value].key;
-    const tab = tabData[key];
-    if (!tab.fetched && !tab.loading) fetchTab(key);
+    const meta = TAB_META[value];
+    if (!meta) return;
+    const tab = tabData[meta.key];
+    if (tab && !tab.fetched && !tab.loading && !tab.error) fetchTab(meta.key);
   }, [value, tabData, fetchTab]);
 
   useEffect(() => {
@@ -424,14 +447,16 @@ export default function FullWidthTabs() {
   }, [fetchTab]);
 
   const handleChange = (event, newValue) => {
+    if (!Number.isInteger(newValue) || newValue < 0 || newValue >= TAB_META.length) return;
     setValue(newValue);
-    sessionStorage.setItem('portfolioTab', newValue);
+    try { sessionStorage.setItem('portfolioTab', String(newValue)); } catch { /* best-effort */ }
   };
 
   const prefetchTab = useCallback((index) => {
-    const key = TAB_META[index].key;
-    const tab = tabData[key];
-    if (!tab.fetched && !tab.loading) fetchTab(key);
+    const meta = TAB_META[index];
+    if (!meta) return;
+    const tab = tabData[meta.key];
+    if (tab && !tab.fetched && !tab.loading) fetchTab(meta.key);
   }, [tabData, fetchTab]);
 
   const toggleShowMore = useCallback((type) => {
@@ -464,7 +489,7 @@ export default function FullWidthTabs() {
 
   const ExpSection = () => sectionContent(expLoading, experiences, expError, expFetched,
     <ExpShimmer />, Briefcase, "No experiences to display yet",
-    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} visited={visited.experiences} />,
+    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} visited={visited.experiences} isMobile={isMobile} />,
     'experiences'
   );
 

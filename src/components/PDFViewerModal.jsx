@@ -45,6 +45,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const [anchorEl, setAnchorEl] = useState(null);
   const [thumbnails, setThumbnails] = useState([]);
   const [overviewOpen, setOverviewOpen] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const pdfRef = useRef(null);
   const containerRef = useRef(null);
   const pagesContainerRef = useRef(null);
@@ -55,26 +56,53 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   const renderingRef = useRef(false);
   const renderDirtyRef = useRef(false);
 
-  const handleDownload = useCallback(() => {
-    if (!pdfUrl) return;
-    const a = document.createElement("a");
-    if (isBase64DataUrl(pdfUrl)) {
-      const base64 = pdfUrl.split(",")[1];
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "application/pdf" });
-      a.href = URL.createObjectURL(blob);
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    } else {
-      a.href = pdfUrl;
+  const handleDownload = useCallback(async () => {
+    if (!pdfUrl || downloading) return;
+    setDownloading(true);
+    // Sanitize: basename only, no path separators/quotes, capped, .pdf enforced.
+    const safeName = (() => {
+      const base = String(filename || "document.pdf")
+        .split(/[/\\]/).pop()
+        .replace(/["':<>|?*]/g, "")
+        .split("")
+        .filter((ch) => ch >= " " && ch !== "")
+        .join("")
+        .trim()
+        .slice(0, 100) || "document.pdf";
+      return /\.pdf$/i.test(base) ? base : `${base}.pdf`;
+    })();
+    let objectUrl = null;
+    try {
+      if (isBase64DataUrl(pdfUrl)) {
+        const base64 = pdfUrl.split(",")[1];
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+        const byteArray = new Uint8Array(byteNumbers);
+        objectUrl = URL.createObjectURL(new Blob([byteArray], { type: "application/pdf" }));
+      } else {
+        // The `download` attribute is ignored on cross-origin URLs, so a plain
+        // anchor navigates instead of downloading. Fetch to a blob first —
+        // Supabase storage serves CORS `*`, so this works for hosted CVs.
+        const res = await fetch(pdfUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        objectUrl = URL.createObjectURL(await res.blob());
+      }
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+    } catch (e) {
+      if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch { /* noop */ } }
+      console.error("Download failed, opening in new tab:", e?.message || e);
+      window.open(pdfUrl, "_blank", "noopener");
+    } finally {
+      setDownloading(false);
     }
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [pdfUrl, filename]);
+  }, [pdfUrl, filename, downloading]);
 
   const renderThumbnails = useCallback(async (pdf) => {
     if (!pdf) return;
@@ -131,7 +159,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [pdfUrl, isOpen, renderThumbnails]);
 
   const renderAllPages = useCallback(async () => {
-    if (renderingRef.current) return;
+    if (renderingRef.current) { renderDirtyRef.current = true; return; }
     const pdf = pdfRef.current;
     const container = pagesContainerRef.current;
     if (!pdf || !container) return;
@@ -144,11 +172,15 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
 
     const containerWidth = container.clientWidth || 800;
     const existing = container.querySelectorAll("[data-page]");
+    // ponytail: render only visible ±1, full render when zoom/rotation changes via fast path
+    const lo = Math.max(1, visiblePage - 1);
+    const hi = Math.min(pdf.numPages, visiblePage + 1);
 
     try {
       if (existing.length === pdf.numPages) {
         for (const wrapper of existing) {
           const pageNum = Number(wrapper.dataset.page);
+          if (pageNum < lo || pageNum > hi) continue;
           const page = await pdf.getPage(pageNum);
           const canvas = wrapper.querySelector("canvas");
           if (!canvas) continue;
@@ -160,7 +192,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           const viewport = page.getViewport({ scale: s, rotation });
 
           const ctx = canvas.getContext("2d");
-          const dpr = window.devicePixelRatio || 1;
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
           canvas.width = viewport.width * dpr;
           canvas.height = viewport.height * dpr;
           canvas.style.width = `${viewport.width}px`;
@@ -193,13 +225,14 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           const viewport = page.getViewport({ scale: s, rotation });
 
           const ctx = canvas.getContext("2d");
-          const dpr = window.devicePixelRatio || 1;
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
           canvas.width = viewport.width * dpr;
           canvas.height = viewport.height * dpr;
           canvas.style.width = `${viewport.width}px`;
           canvas.style.height = `${viewport.height}px`;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+          if (i < lo || i > hi) continue;
           const warn = console.warn; console.warn = () => {};
           await page.render({ canvasContext: ctx, viewport }).promise;
           console.warn = warn;
@@ -234,7 +267,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
         renderAllPages();
       }
     }
-  }, [zoom, rotation, overviewOpen]);
+  }, [zoom, rotation, visiblePage]);
+
+  useEffect(() => {
+    if (!isOpen || loading || !pdfRef.current) return;
+    renderAllPages();
+  }, [visiblePage, isOpen, loading, renderAllPages]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -274,9 +312,24 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
   }, [isOpen]);
 
   useEffect(() => {
+    if (isOpen) return;
+    try { pdfRef.current?.destroy?.(); } catch { /* already destroyed */ }
+    pdfRef.current = null;
+    try { if (pagesContainerRef.current) pagesContainerRef.current.innerHTML = ""; } catch { /* noop */ }
+    try { if (obRef.current) obRef.current.disconnect(); } catch { /* noop */ }
+    obRef.current = null;
+    try { if (roRef.current) roRef.current.disconnect(); } catch { /* noop */ }
+    roRef.current = null;
+  }, [isOpen]);
+
+  useEffect(() => {
+    const pagesEl = pagesContainerRef.current;
     return () => {
-      if (obRef.current) obRef.current.disconnect();
-      if (roRef.current) roRef.current.disconnect();
+      try { pdfRef.current?.destroy?.(); } catch { /* already destroyed */ }
+      pdfRef.current = null;
+      try { if (pagesEl) pagesEl.innerHTML = ""; } catch { /* noop */ }
+      try { if (obRef.current) obRef.current.disconnect(); } catch { /* noop */ }
+      try { if (roRef.current) roRef.current.disconnect(); } catch { /* noop */ }
     };
   }, []);
 
@@ -337,8 +390,8 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {showDownload && (
-              <IconButton onClick={handleDownload} title="Download PDF"
-                sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" } }} size="large"
+              <IconButton onClick={handleDownload} title={downloading ? "Downloading..." : "Download PDF"} disabled={downloading}
+                sx={{ color: "var(--primary)", bgcolor: "var(--soft-strong)", "&:hover": { bgcolor: "var(--edge-strong)" }, opacity: downloading ? 0.5 : 1 }} size="large"
               ><DownloadIcon /></IconButton>
             )}
             <IconButton onClick={onClose}
