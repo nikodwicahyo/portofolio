@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getSupabase } from "../supabase";
-import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, LogIn, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Mail, Lock, LogIn, Sparkles, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import Swal from 'sweetalert2'
 
 export default function Login() {
@@ -114,6 +114,13 @@ export default function Login() {
                 </div>
               </button>
             </form>
+            <Link
+              to="/"
+              className="flex items-center justify-center gap-2 text-xs text-muted hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Home
+            </Link>
           </div>
         </div>
       </div>
