@@ -409,6 +409,8 @@ export default function FullWidthTabs() {
   });
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllCertificates, setShowAllCertificates] = useState(false);
+  const projectsToggleRef = useRef(null);
+  const certsToggleRef = useRef(null);
   const [selectedExperience, setSelectedExperience] = useState(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
@@ -508,9 +510,18 @@ export default function FullWidthTabs() {
   }, [tabData, fetchTab]);
 
   const toggleShowMore = useCallback((type) => {
+    // Collapsing shrinks the page but the browser keeps the old scroll offset,
+    // stranding the user below the content — bring the button back into view.
+    const collapsing = type === 'projects' ? showAllProjects : showAllCertificates;
     if (type === 'projects') setShowAllProjects(p => !p);
     else setShowAllCertificates(p => !p);
-  }, []);
+    if (collapsing) {
+      const ref = type === 'projects' ? projectsToggleRef : certsToggleRef;
+      setTimeout(() => {
+        try { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* best-effort */ }
+      }, 50);
+    }
+  }, [showAllProjects, showAllCertificates]);
 
   const displayedProjects = showAllProjects ? projects : projects.slice(0, initialItems);
   const displayedCertificates = showAllCertificates ? certificates : certificates.slice(0, initialItems);
@@ -552,7 +563,7 @@ export default function FullWidthTabs() {
         ))}
       </div>
       {projects.length > initialItems && (
-        <div className="mt-6 w-full flex justify-center">
+        <div ref={projectsToggleRef} className="mt-6 w-full flex justify-center scroll-mt-24">
           <ToggleButton onClick={() => toggleShowMore('projects')} isShowingMore={showAllProjects} />
         </div>
       )}
@@ -570,7 +581,7 @@ export default function FullWidthTabs() {
         ))}
       </div>
       {certificates.length > initialItems && (
-        <div className="mt-6 w-full flex justify-center">
+        <div ref={certsToggleRef} className="mt-6 w-full flex justify-center scroll-mt-24">
           <ToggleButton onClick={() => toggleShowMore('certificates')} isShowingMore={showAllCertificates} />
         </div>
       )}
