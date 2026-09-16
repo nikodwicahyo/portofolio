@@ -276,8 +276,8 @@ CREATE POLICY "public read certificate images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'certificate-images');
 
--- Sanitized SVG icons (written only by the sanitize-svg Edge Function
--- via service_role; dashboard never uploads SVG raw).
+-- Sanitized SVG tech-stack icons (sanitized client-side, written directly;
+-- dashboard never uploads SVG raw). Needs the bucket plus admin policies.
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('svg-assets', 'svg-assets', true)
 ON CONFLICT DO NOTHING;
@@ -285,6 +285,26 @@ ON CONFLICT DO NOTHING;
 CREATE POLICY "public read svg assets"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'svg-assets');
+
+CREATE POLICY "admin upload svg assets"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'svg-assets'
+  AND EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
+
+CREATE POLICY "admin delete svg assets"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'svg-assets'
+  AND EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
 ```
 
 ### 5. Enable Realtime (Comments)

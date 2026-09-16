@@ -334,7 +334,7 @@ export default function TechStack() {
   }, []);
 
   const uploadIcon = async (f) => {
-    // SVG never goes to storage raw: sanitized server-side via sanitize-svg.
+    // SVG is sanitized locally, then stored (never the raw upload).
     if (isSvgFile(f)) return uploadSanitizedSvg(f);
     const sb = getSupabase();
     if (!sb) throw new Error("Supabase not configured.");

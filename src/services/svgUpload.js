@@ -1,9 +1,15 @@
 import { getSupabase } from '../supabase';
 import { validateSvgFile } from './storage.js';
+import { sanitizeSvg } from './sanitizeSvg.js';
 
-// Uploads an SVG through the sanitize-svg Edge Function (admin JWT required).
-// Returns the public URL of the sanitized object. Throws on validation or
-// server failure — caller shows the message and aborts the DB write.
+const SVG_BUCKET = 'svg-assets';
+
+// Uploads an SVG: validate → sanitize locally → store sanitized bytes, never
+// the original. No Edge Function involved (nothing to deploy, no CORS
+// preflight, no gateway JWT). Write access is admin-only via storage RLS;
+// icons render via <img>, which never executes embedded scripts.
+// Returns the public URL. Throws with an actionable message — caller shows
+// it and aborts the DB write.
 export async function uploadSanitizedSvg(file) {
   const vErr = validateSvgFile(file);
   if (vErr) throw new Error(vErr);
@@ -11,40 +17,37 @@ export async function uploadSanitizedSvg(file) {
   if (!sb) throw new Error('Supabase not configured.');
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.access_token) throw new Error('You must be signed in.');
-  const base = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!base) throw new Error('Supabase not configured.');
 
-  const form = new FormData();
-  form.append('file', file, file.name || 'icon.svg');
-  const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(30000) : undefined;
-  let res;
+  let text;
   try {
-    res = await fetch(`${base}/functions/v1/sanitize-svg`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        ...(anonKey ? { apikey: anonKey } : {}),
-      },
-      body: form,
-      ...(signal ? { signal } : {}),
-    });
-  } catch (e) {
-    if (e?.name === 'TimeoutError') throw new Error('SVG sanitizer timed out. Try again.');
-    throw new Error('SVG sanitizer unavailable. Try again later.');
-  }
-  if (res.status === 404) {
-    throw new Error('SVG sanitizer not deployed yet. Ask the admin to deploy supabase/functions/sanitize-svg.');
-  }
-  let body = null;
-  try {
-    body = await res.json();
+    text = await file.text();
   } catch {
-    throw new Error('SVG sanitizer returned an invalid response.');
+    throw new Error('Could not read file.');
   }
-  if (!res.ok) throw new Error(body?.error || 'SVG rejected by sanitizer.');
-  if (!body?.publicUrl) throw new Error('SVG sanitizer returned no URL.');
-  return body.publicUrl;
+  const clean = sanitizeSvg(text);
+  if (!clean) throw new Error('SVG rejected: executable content detected.');
+
+  const key = `tech-${Date.now()}-${Math.random().toString(36).slice(2)}.svg`;
+  const { error } = await sb.storage.from(SVG_BUCKET).upload(
+    key,
+    new Blob([clean], { type: 'image/svg+xml' }),
+    { contentType: 'image/svg+xml', upsert: false },
+  );
+  if (error) throw new Error(friendlyStorageError(error));
+  const { data } = sb.storage.from(SVG_BUCKET).getPublicUrl(key);
+  if (!data?.publicUrl) throw new Error('SVG upload returned no URL.');
+  return data.publicUrl;
+}
+
+function friendlyStorageError(error) {
+  const msg = error?.message || 'SVG upload failed.';
+  if (/bucket not found/i.test(msg)) {
+    return 'Storage bucket "svg-assets" is missing. Run the svg-assets SQL from the README, then retry.';
+  }
+  if (/row-level security|policy|permission|unauthorized/i.test(msg)) {
+    return 'Upload denied by storage policy. Apply the svg-assets SQL from the README and confirm your user has the admin role.';
+  }
+  return msg;
 }
 
 export function isSvgFile(file) {

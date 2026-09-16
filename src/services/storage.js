@@ -3,8 +3,8 @@ import { getSupabase } from '../supabase';
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const MAX_SVG_BYTES = 512 * 1024;
 
-// Raster only. SVG is handled via the sanitize-svg Edge Function path
-// (see supabase/functions/sanitize-svg) — never uploaded raw.
+// Raster only. SVG is sanitized locally and uploaded to svg-assets
+// (see src/services/sanitizeSvg.js) — never uploaded raw.
 export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const RASTER_EXT = /\.(png|jpe?g|webp|gif)$/i;
 
