@@ -180,7 +180,7 @@ const CardGridLoading = ({ count, cols }) => {
   const shimmerItem = (i) => (
     <div key={i} className="relative group">
       <div className="relative bg-surface border border-edge rounded-2xl overflow-hidden">
-        <ShimmerBlock className="w-full aspect-[16/11.5] rounded-none" />
+        <ShimmerBlock className="w-full aspect-[16/9] rounded-none" />
       </div>
     </div>
   );

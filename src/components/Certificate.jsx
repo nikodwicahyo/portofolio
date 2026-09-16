@@ -5,7 +5,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ImageViewerModal from "./ImageViewerModal";
 import LazyImage from "./LazyImage";
 import { isPdfUrl } from "../utils/fileType";
-import { optimizedImageUrl } from "../utils/image";
+import { optimizedImageUrl, projectSrcSet } from "../utils/image";
 
 // Split pdf.js out of the portfolio chunk: thumbnails and the viewer load on demand.
 const PDFThumbnail = lazy(() => import("./PDFThumbnail"));
@@ -112,7 +112,10 @@ const Certificate = memo(({ ImgSertif }) => {
             </Box>
           ) : (
             <LazyImage
-              src={optimizedImageUrl(ImgSertif, { width: 800 })}
+              src={optimizedImageUrl(ImgSertif, { width: 960, quality: 80 })}
+              srcSet={projectSrcSet(ImgSertif)}
+              fallbackSrc={ImgSertif}
+              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
               alt="Certificate"
               aspectRatio="16/11.5"
               className="certificate-image !w-full object-cover aspect-[16/11.5]"

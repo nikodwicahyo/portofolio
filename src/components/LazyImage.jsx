@@ -1,13 +1,40 @@
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useEffect } from "react";
+import { preconnectSupabase } from "../utils/image";
 
-const LazyImage = memo(({ src, alt, className = "", wrapperClassName = "", aspectRatio, priority, onLoad: onLoadProp, ...props }) => {
+const LazyImage = memo(({ src, srcSet, sizes, fallbackSrc, alt, className = "", wrapperClassName = "", aspectRatio, priority, onLoad: onLoadProp, onError: onErrorProp, ...props }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const [triedFallback, setTriedFallback] = useState(false);
+
+  // ponytail: runtime preconnect — Supabase host comes from env, can't hardcode in index.html
+  useEffect(() => { preconnectSupabase(src); }, [src]);
+
+  // Reset if the source changes (e.g. navigating between projects).
+  useEffect(() => {
+    setCurrentSrc(src);
+    setTriedFallback(false);
+    setError(false);
+    setLoaded(false);
+  }, [src]);
 
   const onLoad = useCallback(() => {
     setLoaded(true);
     onLoadProp?.();
   }, [onLoadProp]);
+
+  // Resilient: if the Supabase render/image transform fails (e.g. Image
+  // Transformation disabled → 400), retry once with the original object URL
+  // before giving up. This keeps images working on any project config.
+  const onError = useCallback(() => {
+    if (fallbackSrc && !triedFallback && currentSrc !== fallbackSrc) {
+      setTriedFallback(true);
+      setCurrentSrc(fallbackSrc);
+      return;
+    }
+    setError(true);
+    onErrorProp?.();
+  }, [fallbackSrc, triedFallback, currentSrc, onErrorProp]);
 
   if (!src) {
     return (
@@ -38,14 +65,16 @@ const LazyImage = memo(({ src, alt, className = "", wrapperClassName = "", aspec
     <div className={`relative overflow-hidden ${wrapperClassName}`} style={aspectRatio ? { aspectRatio } : undefined}>
       {!loaded && <div className="absolute inset-0 bg-soft animate-pulse" />}
       <img
-        src={src}
+        src={currentSrc}
+        srcSet={triedFallback ? undefined : srcSet}
+        sizes={sizes}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
-        fetchPriority={priority ? "high" : undefined}
+        fetchpriority={priority ? "high" : "auto"}
         onLoad={onLoad}
-        onError={() => setError(true)}
-        className={`transition-all duration-500 ${loaded ? 'opacity-100 blur-0 scale-100' : 'opacity-0 blur-sm scale-105'} ${className}`}
+        onError={onError}
+        className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}
         {...props}
       />
     </div>

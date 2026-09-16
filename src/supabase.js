@@ -27,6 +27,13 @@ export function getSupabase() {
     return null;
   }
   _client = createClient(url, key);
+  // Self-heal stale sessions (revoked/rotated refresh token): otherwise
+  // supabase-js retries refresh on every load and spams 400s. Best-effort.
+  _client.auth.getSession().then(({ error }) => {
+    if (error && /refresh token/i.test(error.message || '')) {
+      _client.auth.signOut({ scope: 'local' }).catch(() => {});
+    }
+  }).catch(() => {});
   return _client;
 }
 

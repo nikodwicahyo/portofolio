@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "../../supabase";
 import { validateImageFile, removeImage } from "../../services/storage.js";
+import { compressProjectImage, optimizedImageUrl, projectSrcSet } from "../../utils/image.js";
 import { toStorageKey } from "../../utils/storageKey";
 import { safeExternalUrl } from "../../utils/fileType";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
@@ -51,7 +52,7 @@ const InputField = ({
 const SkeletonCard = () => (
   <div className="relative">
     <div className="relative bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3">
-      <div className="w-full aspect-[16/8] bg-soft animate-pulse rounded-xl" />
+      <div className="w-full aspect-[16/9] bg-soft animate-pulse rounded-xl" />
       <div className="h-4 bg-soft animate-pulse rounded-lg w-2/3" />
       <div className="h-3 bg-soft animate-pulse rounded-lg w-full" />
       <div className="h-3 bg-soft animate-pulse rounded-lg w-4/5" />
@@ -81,14 +82,25 @@ const ProjectCard = ({ project, onDelete, onEdit }) => {
     <Card>
       <div className="p-4 flex flex-col h-full">
         {project.img && (
-          <div className="w-full aspect-[16/8] rounded-xl mb-4 border border-edge overflow-hidden bg-soft">
+          <div className="w-full aspect-[16/9] rounded-xl mb-4 border border-edge overflow-hidden bg-soft">
             {!imgLoaded && (
               <div className="w-full h-full animate-pulse bg-soft" />
             )}
             <img
-              src={project.img}
+              src={optimizedImageUrl(project.img, { width: 960, quality: 80 })}
+              srcSet={projectSrcSet(project.img)}
+              sizes="(max-width: 640px) 100vw, 50vw"
               alt={project.title}
+              loading="lazy"
+              decoding="async"
               onLoad={() => setImgLoaded(true)}
+              onError={(e) => {
+                const t = e.currentTarget;
+                if (t.src !== project.img) {
+                  t.removeAttribute('srcset');
+                  t.src = project.img;
+                }
+              }}
               className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0 absolute"}`}
             />
           </div>
@@ -379,8 +391,12 @@ export default function Projects() {
   const uploadImage = async (f) => {
     const sb = getSupabase();
     if (!sb) throw new Error("Supabase not configured.");
-    const fileName = toStorageKey('proj', f.name, 'png');
-    const { error: upErr } = await sb.storage.from("project-images").upload(fileName, f);
+    const compressed = await compressProjectImage(f);
+    const fileName = toStorageKey('proj', compressed.name || f.name, 'webp');
+    const { error: upErr } = await sb.storage.from("project-images").upload(fileName, compressed, {
+      contentType: compressed.type || 'image/webp',
+      upsert: false,
+    });
     if (upErr) throw upErr;
     const { data } = sb.storage
       .from("project-images")

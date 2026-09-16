@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
-import { optimizedImageUrl } from "../utils/image";
+import { optimizedImageUrl, projectSrcSet } from "../utils/image";
 import LazyImage from "./LazyImage";
+
+const CARD_SIZES = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw";
 
 const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) => {
   const safeLink = safeExternalUrl(ProjectLink);
@@ -14,10 +16,14 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
         <div className="relative p-4 sm:p-5 z-10">
           <div className="relative overflow-hidden rounded-lg">
             <LazyImage
-              src={optimizedImageUrl(Img, { width: 800 })}
+              src={optimizedImageUrl(Img, { width: 960, quality: 80 })}
+              srcSet={projectSrcSet(Img)}
+              fallbackSrc={Img}
+              sizes={CARD_SIZES}
               alt={Title}
-              aspectRatio="16/8"
-              className="w-full h-full object-cover aspect-[16/8] transform group-hover:scale-105"
+              aspectRatio="16/9"
+              className="w-full h-full object-cover aspect-[16/9] transform group-hover:scale-[1.03] transition-transform duration-500"
+              wrapperClassName="bg-soft"
             />
           </div>
 

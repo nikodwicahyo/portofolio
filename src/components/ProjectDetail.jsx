@@ -19,8 +19,10 @@ import Swal from "sweetalert2";
 import { getSupabase } from "../supabase";
 import { normalizeSlug, toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
+import { fullHdUrl, projectDetailUrl, projectSrcSet } from "../utils/image";
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
+import ImageViewerModal from "./ImageViewerModal";
 
 const TECH_ICONS = {
   React: Globe,
@@ -144,6 +146,7 @@ const ProjectDetails = () => {
   const location = useLocation();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lightbox, setLightbox] = useState(false);
   const reqId = useRef(0);
   const findProject = useCallback((projects) => {
     const target = normalizeSlug(slug);
@@ -290,7 +293,8 @@ const ProjectDetails = () => {
         />
         <meta property="og:url" content={projectUrl} />
         <meta property="og:type" content="website" />
-        {project.img && <meta property="og:image" content={project.img} />}
+        {project.img && <meta property="og:image" content={fullHdUrl(project.img)} />}
+        {project.img && <link rel="preload" as="image" href={projectDetailUrl(project.img)} imageSrcSet={projectSrcSet(project.img, [960, 1280, 1600])} imageSizes="(max-width: 1024px) 100vw, 50vw" />}
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'CreativeWork',
@@ -384,14 +388,28 @@ const ProjectDetails = () => {
 
               <div className="space-y-6 md:space-y-10 animate-slideInRight">
                 <div className="relative rounded-2xl overflow-hidden border border-edge shadow-2xl group">
-                  <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                   <img
-src={project.img}
-                      alt={project.title}
-                    className="w-full object-cover transform transition-transform duration-700 will-change-transform group-hover:scale-105"
-                    
+                    src={projectDetailUrl(project.img)}
+                    srcSet={projectSrcSet(project.img, [960, 1280, 1600])}
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    alt={project.title}
+                    loading="eager"
+                    fetchpriority="high"
+                    decoding="async"
+                    onClick={() => project.img && setLightbox(true)}
+                    onError={(e) => {
+                      // Resilient: transform endpoint unavailable → original URL.
+                      const t = e.currentTarget;
+                      if (t.src !== project.img) {
+                        t.removeAttribute('srcset');
+                        t.src = project.img;
+                      }
+                    }}
+                    className="w-full h-auto block cursor-zoom-in"
+
                   />
-                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-edge transition-colors duration-300 rounded-2xl" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-edge transition-colors duration-300 rounded-2xl pointer-events-none" />
                 </div>
 
                 <div className="bg-soft rounded-2xl p-8 border border-edge space-y-6 hover:border-edge-strong transition-colors duration-300 group">
@@ -416,6 +434,13 @@ src={project.img}
           </div>
         </div>
       </div>
+      {project.img && (
+        <ImageViewerModal
+          imageUrl={fullHdUrl(project.img)}
+          isOpen={lightbox}
+          onClose={() => setLightbox(false)}
+        />
+      )}
     </>
   );
 };
