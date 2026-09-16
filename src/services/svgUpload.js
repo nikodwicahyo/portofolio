@@ -12,6 +12,7 @@ export async function uploadSanitizedSvg(file) {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.access_token) throw new Error('You must be signed in.');
   const base = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!base) throw new Error('Supabase not configured.');
 
   const form = new FormData();
@@ -21,7 +22,10 @@ export async function uploadSanitizedSvg(file) {
   try {
     res = await fetch(`${base}/functions/v1/sanitize-svg`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        ...(anonKey ? { apikey: anonKey } : {}),
+      },
       body: form,
       ...(signal ? { signal } : {}),
     });

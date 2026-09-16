@@ -7,8 +7,14 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const MAX_SVG_BYTES = 512 * 1024;
 
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 // Deterministic sanitizer for icon-style SVGs. Anything structural outside
 // this allowlist is stripped; if scriptable content survives, reject.
@@ -44,6 +50,7 @@ function storageKey(): string {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
 
   const url = Deno.env.get('SUPABASE_URL')!;
