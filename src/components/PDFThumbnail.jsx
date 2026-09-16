@@ -33,24 +33,29 @@ const renderPDFToDataUrl = async (url) => {
     return val;
   }
 
-  const pdfData = getPDFData(url);
-  const warn = console.warn; console.warn = () => {};
-  let pdf = null;
-  try {
-    const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
-    pdf = await loadingTask.promise;
-    const page = await pdf.getPage(1);
+    const pdfData = getPDFData(url);
+    const warn = console.warn; console.warn = () => {};
+    let pdf = null;
+    try {
+      const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
+      pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
 
-    const viewport = page.getViewport({ scale: 1.0 });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+      // HD: render at ~960px wide (not 1.0 scale) so the stretched thumbnail
+      // stays sharp on retina. Capped for perf; result is LRU-cached above.
+      // ponytail: one render per URL, no new dep; ceiling = ~3MP canvas encode.
+      const baseViewport = page.getViewport({ scale: 1.0 });
+      const scale = Math.min(3, 960 / baseViewport.width);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
 
-    const ctx = canvas.getContext("2d");
-    const task = page.render({ canvasContext: ctx, viewport });
-    await task.promise;
+      const ctx = canvas.getContext("2d");
+      const task = page.render({ canvasContext: ctx, viewport });
+      await task.promise;
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
     thumbnailCache.set(url, dataUrl);
     if (thumbnailCache.size > CACHE_MAX) {
       const oldest = thumbnailCache.keys().next().value;

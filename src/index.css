@@ -131,6 +131,43 @@ body {
   animation: slideInRight 0.6s ease-out;
 }
 
+/* Experience timeline — theme-aware via existing vars (dark default, html.light) */
+.timeline-spine {
+  background: var(--primary);
+}
+.timeline-node {
+  background: var(--bg);
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 4px var(--bg), 0 0 16px var(--glow-strong, var(--soft-strong));
+}
+.timeline-node-halo::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 1px solid var(--edge-strong);
+  animation: timelinePing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes timelinePing {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  75%, 100% { transform: scale(1.5); opacity: 0; }
+}
+/* Glass card with top-edge sheen; hover lift handled in JSX */
+.exp-glass {
+  background: linear-gradient(to bottom, var(--elevated), var(--surface));
+  backdrop-filter: blur(12px);
+}
+.exp-glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--edge-strong), transparent);
+  pointer-events: none;
+}
+
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
 	width: 10px;

@@ -77,12 +77,17 @@ function a11yProps(index) {
 const ExperienceCard = memo(({ exp, onSelect }) => {
   const fmt = (d) => formatDateShort(d);
   const logo = optimizedImageUrl(exp.logo_url, { width: 192, quality: 70 });
+  const isCurrent = !exp.end_date;
   return (
     <div className="relative group cursor-pointer" onClick={() => onSelect(exp)}>
-      <div className="relative bg-surface border border-edge rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:border-edge-strong hover:bg-elevated">
-        <div className="flex items-start gap-3 mb-3">
+      <div className="exp-glass relative border border-edge rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:border-edge-strong hover:-translate-y-1 hover:shadow-2xl">
+        <div className={`inline-flex self-start whitespace-nowrap items-center gap-1 rounded-full border px-2 py-0.5 mb-2 sm:mb-0 sm:absolute sm:top-4 sm:right-4 text-[10px] sm:text-[11px] font-semibold tracking-wide ${isCurrent ? "border-edge-strong bg-soft-strong text-primary" : "border-edge bg-soft text-secondary"}`}>
+          {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+          {fmt(exp.start_date)} - {fmt(exp.end_date)}
+        </div>
+        <div className="flex items-start gap-3 mb-3 sm:pr-36">
           {exp.logo_url ? (
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-soft shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-soft ring-1 ring-edge shrink-0">
               <LazyImage src={logo} fallbackSrc={exp.logo_url} alt={exp.company} loading="eager" decoding="async" className="w-full h-full object-cover" />
             </div>
           ) : (
@@ -95,27 +100,21 @@ const ExperienceCard = memo(({ exp, onSelect }) => {
             <p className="text-secondary text-xs sm:text-sm">{exp.company}</p>
           </div>
         </div>
-        <div className="space-y-1 mb-2 sm:mb-3">
-          <div className="flex items-center gap-1.5 text-muted text-xs">
-            <Calendar className="w-3 h-3 shrink-0" />
-            <span className="truncate">{fmt(exp.start_date)} - {fmt(exp.end_date)}</span>
+        {exp.location && (
+          <div className="flex items-center gap-1.5 text-muted text-xs mb-2 sm:mb-3">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{exp.location}</span>
           </div>
-          {exp.location && (
-            <div className="flex items-center gap-1.5 text-muted text-xs">
-              <MapPin className="w-3 h-3 shrink-0" />
-              <span className="truncate">{exp.location}</span>
-            </div>
-          )}
-        </div>
+        )}
         {exp.description && (
           <p className="text-secondary text-xs sm:text-sm leading-relaxed line-clamp-2 sm:line-clamp-3">{exp.description}</p>
         )}
         <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-edge">
           <p className="text-muted group-hover:text-primary text-xs font-medium flex items-center gap-1.5 transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-            </svg>
             View details
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+              <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
+            </svg>
           </p>
         </div>
       </div>
@@ -127,13 +126,21 @@ const ExperienceModal = ({ experience, onClose }) => {
   if (!experience) return null;
   const fmt = (d) => formatDateLong(d);
   const logo = optimizedImageUrl(experience.logo_url, { width: 256, quality: 75 });
+  const isCurrent = !experience.end_date;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose} style={{ animation: 'fadeIn 0.2s ease-out' }}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" style={{ animation: 'fadeIn 0.2s ease-out' }} />
-      <div className="relative z-10 w-full max-w-2xl mx-auto" style={{ animation: 'fadeIn 0.2s ease-out, scaleIn 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
-        <div className="relative bg-elevated border border-edge rounded-2xl overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative z-10 w-full max-w-2xl mx-auto" onClick={e => e.stopPropagation()}>
+        <div className="exp-glass relative border border-edge rounded-2xl overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-edge">
-            <h2 className="text-base sm:text-lg font-semibold text-primary">Experience Details</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-primary">Experience Details</h2>
+              {isCurrent && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-edge-strong bg-soft-strong px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Current
+                </span>
+              )}
+            </div>
             <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-soft-strong transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -143,7 +150,7 @@ const ExperienceModal = ({ experience, onClose }) => {
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[70vh] overflow-y-auto">
             <div className="flex items-start gap-3 sm:gap-4">
               {experience.logo_url ? (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-soft shrink-0">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-soft ring-1 ring-edge shrink-0">
                   <LazyImage src={logo} fallbackSrc={experience.logo_url} alt={experience.company} loading="eager" className="w-full h-full object-cover" />
                 </div>
               ) : (
@@ -157,9 +164,9 @@ const ExperienceModal = ({ experience, onClose }) => {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-primary text-sm">
+              <div className="flex items-center gap-2 text-sm">
                 <Calendar className="w-4 h-4 shrink-0 text-muted" />
-                <span>{fmt(experience.start_date)} - {fmt(experience.end_date)}</span>
+                <span className="inline-flex whitespace-nowrap items-center rounded-full border border-edge bg-soft px-2.5 py-0.5 text-xs font-medium text-primary">{fmt(experience.start_date)} - {fmt(experience.end_date)}</span>
               </div>
               {experience.location && (
                 <div className="flex items-center gap-2 text-primary text-sm">
@@ -201,6 +208,7 @@ const ExpShimmer = ({ count = 3 }) => (
       <div key={i} className="relative pl-10 sm:pl-14">
         <div className="absolute left-4 sm:left-6 top-5 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-soft-strong ring-4 ring-bg" />
         <div className="relative bg-surface border border-edge rounded-2xl p-4 sm:p-5 space-y-3">
+          <ShimmerBlock className="absolute top-3 right-3 h-5 w-28 rounded-full" />
           <div className="flex items-start gap-3">
             <ShimmerBlock className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl shrink-0" />
             <div className="flex-1 space-y-2">
@@ -216,20 +224,22 @@ const ExpShimmer = ({ count = 3 }) => (
   </div>
 );
 
-const ExperienceTimeline = memo(({ experiences, onSelect, visited, isMobile = false }) => {
+const ExperienceTimeline = memo(({ experiences, onSelect, isMobile = false }) => {
   return (
   <div className="relative">
-    <div className="absolute left-4 sm:left-6 md:left-1/2 top-0 w-0.5 h-full bg-soft-strong md:-translate-x-1/2" />
+    <div className="timeline-spine absolute left-4 sm:left-6 md:left-1/2 top-0 w-0.5 h-full md:-translate-x-1/2" />
     <div className="space-y-6 sm:space-y-8 md:space-y-12">
       {experiences.map((exp, index) => {
         const even = index % 2 === 0;
         const anim = isMobile ? "fadeIn" : even ? "slideInLeft" : "slideInRight";
         return (
-          <div key={exp.id || index}
-            {...entrance(visited, anim, 1000, index)}
+          <ScrollReveal key={exp.id || index}
+            animation={anim} duration={1000} delay={index * 90}
             className="relative pl-10 sm:pl-14 md:pl-0"
           >
-            <div className="absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-primary ring-4 ring-bg md:-translate-x-1/2 z-10" />
+            <div className={`timeline-node absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full md:-translate-x-1/2 z-10 ${index === 0 ? "timeline-node-halo" : ""}`} />
+            {/* connector tick from spine to card (desktop) */}
+            <div className={`hidden md:block absolute top-7 left-1/2 w-[calc(10%-1rem)] border-t-2 border-dashed border-primary ${even ? "right-1/2 left-auto mr-2 rotate-0" : "left-1/2 ml-2"}`} />
 
             {isMobile ? (
               <ExperienceCard exp={exp} onSelect={onSelect} />
@@ -240,7 +250,7 @@ const ExperienceTimeline = memo(({ experiences, onSelect, visited, isMobile = fa
                 <div>{!even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
               </div>
             )}
-          </div>
+          </ScrollReveal>
         );
       })}
     </div>
@@ -387,10 +397,35 @@ const ErrorState = ({ msg, onRetry }) => (
   </div>
 );
 
-const entrance = (visited, animation, duration, index) =>
-  visited
-    ? {}
-    : { style: { animation: `${animation} ${duration}ms ease both`, animationDelay: `${index * 90}ms` } };
+// ponytail: reveal-once on scroll down, like the other pages — fires the first
+// time the card scrolls into view, then disconnects so scroll-up never replays.
+// Hidden tabs never intersect, so tab switches and modal toggles stay static.
+const ScrollReveal = memo(({ animation = "fadeIn", duration = 800, delay = 0, className = "", children }) => {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") { setShown(true); return; }
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setShown(true); io.disconnect(); }
+    }, { threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={shown
+        ? { animation: `${animation} ${duration}ms ease both`, animationDelay: `${Math.min(delay, 450)}ms` }
+        : { opacity: 0 }}
+    >
+      {children}
+    </div>
+  );
+});
+ScrollReveal.displayName = "ScrollReveal";
 
 export default function FullWidthTabs() {
   const { state: tabData, fetchTab } = useTabData();
@@ -414,19 +449,10 @@ export default function FullWidthTabs() {
   const [selectedExperience, setSelectedExperience] = useState(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const initialItems = isMobile ? 4 : 6;
-  const [visitedTabs, setVisitedTabs] = useState(() => new Set());
-  const prevTabRef = useRef(value);
   // ponytail: mount-once-then-keep — first visit mounts, afterwards hidden only.
   const [mountedTabs, setMountedTabs] = useState(() => new Set([value]));
 
   useEffect(() => {
-    if (value === prevTabRef.current) return;
-    setVisitedTabs((prev) => {
-      const next = new Set(prev);
-      next.add(prevTabRef.current);
-      return next;
-    });
-    prevTabRef.current = value;
     setMountedTabs((prev) => {
       if (prev.has(value)) return prev;
       const next = new Set(prev);
@@ -512,19 +538,11 @@ export default function FullWidthTabs() {
   const toggleShowMore = useCallback((type) => {
     // Collapsing shrinks the page but the browser keeps the old scroll offset,
     // stranding the user below the content — bring the button back into view.
+    // ScrollReveal fires once per mount, so toggles never replay animations.
     const isProjects = type === 'projects';
     const collapsing = isProjects ? showAllProjects : showAllCertificates;
     if (isProjects) setShowAllProjects(p => !p);
     else setShowAllCertificates(p => !p);
-    // Newly mounted rows must not re-animate — mark the section as seen so
-    // entrance() renders them statically from this render on.
-    setVisitedTabs((prev) => {
-      const idx = isProjects ? 1 : 2;
-      if (prev.has(idx)) return prev;
-      const next = new Set(prev);
-      next.add(idx);
-      return next;
-    });
     if (collapsing) {
       const ref = type === 'projects' ? projectsToggleRef : certsToggleRef;
       setTimeout(() => {
@@ -535,12 +553,6 @@ export default function FullWidthTabs() {
 
   const displayedProjects = showAllProjects ? projects : projects.slice(0, initialItems);
   const displayedCertificates = showAllCertificates ? certificates : certificates.slice(0, initialItems);
-  const visited = {
-    experiences: visitedTabs.has(0),
-    projects: visitedTabs.has(1),
-    certificates: visitedTabs.has(2),
-    tech: visitedTabs.has(3),
-  };
 
   const emptyState = (Icon, msg) => (
     <div className="text-center py-12 sm:py-16">
@@ -558,7 +570,7 @@ export default function FullWidthTabs() {
 
   const ExpSection = () => sectionContent(expLoading, experiences, expError, expFetched,
     <ExpShimmer />, Briefcase, "No experiences to display yet",
-    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} visited={visited.experiences} isMobile={isMobile} />,
+    <ExperienceTimeline experiences={experiences} onSelect={setSelectedExperience} isMobile={isMobile} />,
     'experiences'
   );
 
@@ -567,9 +579,12 @@ export default function FullWidthTabs() {
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 w-full">
         {displayedProjects.map((project, index) => (
-          <div key={project.id || index} {...entrance(visited.projects, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
+          <ScrollReveal key={project.id || index}
+            animation={index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight"}
+            duration={index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000}
+            delay={index * 90}>
             <CardProject Img={project.img} Title={project.title} Description={project.description} Link={project.link} id={project.id} />
-          </div>
+          </ScrollReveal>
         ))}
       </div>
       {projects.length > initialItems && (
@@ -585,9 +600,12 @@ export default function FullWidthTabs() {
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 w-full">
         {displayedCertificates.map((cert, index) => (
-          <div key={cert.id || index} {...entrance(visited.certificates, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
+          <ScrollReveal key={cert.id || index}
+            animation={index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight"}
+            duration={index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000}
+            delay={index * 90}>
             <Certificate ImgSertif={cert.img} />
-          </div>
+          </ScrollReveal>
         ))}
       </div>
       {certificates.length > initialItems && (
@@ -611,9 +629,12 @@ export default function FullWidthTabs() {
     </div>, Boxes, "No tech stacks to display yet",
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-8 w-full">
       {techStacks.map((stack, index) => (
-        <div key={stack.id} {...entrance(visited.tech, index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight", index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000, index)}>
+        <ScrollReveal key={stack.id}
+          animation={index % 3 === 0 ? "slideInLeft" : index % 3 === 1 ? "fadeIn" : "slideInRight"}
+          duration={index % 3 === 0 ? 1000 : index % 3 === 1 ? 1200 : 1000}
+          delay={index * 90}>
           <TechStackIcon TechStackIcon={stack.icon} Language={stack.name} />
-        </div>
+        </ScrollReveal>
       ))}
     </div>
   );
@@ -689,7 +710,10 @@ export default function FullWidthTabs() {
 
         <TabPanel value={value} index={0} mounted={mountedTabs.has(0)}>
           <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 0 ? "tab-fade-in" : ""}`}>
-            <ExpSection />
+            {/* ponytail: invoked as functions, not <Components/> — inline
+                definitions get new identities each render, which would remount
+                the whole grid (replaying slides) on every modal open/close. */}
+            {ExpSection()}
             {selectedExperience && (
               <ExperienceModal experience={selectedExperience} onClose={() => setSelectedExperience(null)} />
             )}
@@ -698,19 +722,19 @@ export default function FullWidthTabs() {
 
         <TabPanel value={value} index={1} mounted={mountedTabs.has(1)}>
           <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 1 ? "tab-fade-in" : ""}`}>
-            <ProjectSection />
+            {ProjectSection()}
           </div>
         </TabPanel>
 
         <TabPanel value={value} index={2} mounted={mountedTabs.has(2)}>
           <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 2 ? "tab-fade-in" : ""}`}>
-            <CertSection />
+            {CertSection()}
           </div>
         </TabPanel>
 
         <TabPanel value={value} index={3} mounted={mountedTabs.has(3)}>
           <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 3 ? "tab-fade-in" : ""}`}>
-            <TechSection />
+            {TechSection()}
           </div>
         </TabPanel>
       </Box>
