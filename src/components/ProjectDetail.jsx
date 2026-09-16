@@ -395,7 +395,6 @@ const ProjectDetails = () => {
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     alt={project.title}
                     loading="eager"
-                    fetchpriority="high"
                     decoding="async"
                     onClick={() => project.img && setLightbox(true)}
                     onError={(e) => {

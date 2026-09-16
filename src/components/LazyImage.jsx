@@ -1,8 +1,16 @@
 import { useState, useCallback, memo, useEffect } from "react";
 import { preconnectSupabase } from "../utils/image";
 
+// ponytail: global loaded-cache — remounted <img> with a known URL skips the pulse flash.
+const loadedCache = new Set();
+const markLoaded = (url) => {
+  try {
+    if (url) loadedCache.add(url);
+  } catch { /* best-effort */ }
+};
+
 const LazyImage = memo(({ src, srcSet, sizes, fallbackSrc, alt, className = "", wrapperClassName = "", aspectRatio, priority, onLoad: onLoadProp, onError: onErrorProp, ...props }) => {
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(() => loadedCache.has(src));
   const [error, setError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src);
   const [triedFallback, setTriedFallback] = useState(false);
@@ -11,17 +19,29 @@ const LazyImage = memo(({ src, srcSet, sizes, fallbackSrc, alt, className = "", 
   useEffect(() => { preconnectSupabase(src); }, [src]);
 
   // Reset if the source changes (e.g. navigating between projects).
+  // Cached URLs stay loaded so back-switch never shows a spinner.
   useEffect(() => {
     setCurrentSrc(src);
     setTriedFallback(false);
     setError(false);
-    setLoaded(false);
+    setLoaded(loadedCache.has(src));
   }, [src]);
 
   const onLoad = useCallback(() => {
+    markLoaded(currentSrc);
+    // Also mark the canonical src so remounts with srcSet variants hit cache.
+    markLoaded(src);
     setLoaded(true);
     onLoadProp?.();
-  }, [onLoadProp]);
+  }, [onLoadProp, currentSrc, src]);
+
+  // ponytail: fetchpriority via ref — React 18 warns on the prop (any casing),
+  // eslint wants camelCase. Imperative setAttribute satisfies both, no warning.
+  const priorityRef = useCallback((el) => {
+    try {
+      if (el && priority) el.setAttribute("fetchpriority", "high");
+    } catch { /* best-effort */ }
+  }, [priority]);
 
   // Resilient: if the Supabase render/image transform fails (e.g. Image
   // Transformation disabled → 400), retry once with the original object URL
@@ -61,17 +81,21 @@ const LazyImage = memo(({ src, srcSet, sizes, fallbackSrc, alt, className = "", 
     );
   }
 
+  // Strip caller-passed hint props (either casing warns under React 18).
+  delete props.fetchPriority;
+  delete props.fetchpriority;
+
   return (
     <div className={`relative overflow-hidden ${wrapperClassName}`} style={aspectRatio ? { aspectRatio } : undefined}>
       {!loaded && <div className="absolute inset-0 bg-soft animate-pulse" />}
       <img
+        ref={priorityRef}
         src={currentSrc}
         srcSet={triedFallback ? undefined : srcSet}
         sizes={sizes}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
-        fetchpriority={priority ? "high" : "auto"}
         onLoad={onLoad}
         onError={onError}
         className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}

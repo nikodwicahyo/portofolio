@@ -1,8 +1,8 @@
 import { getSupabase } from '../supabase';
-import { PROJECTS_CACHE_KEY } from '../utils/portfolioPrefetch';
 
-// Single source of truth for tab order + queries.
+// Single source of truth for tab order + queries + cache keys.
 // UI index === TABS index — fixes the old TAB_META/UI mismatch.
+export const PROJECTS_CACHE_KEY = "projects_v2";
 export const TABS = [
   { key: 'experiences', label: 'Experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
   { key: 'projects', label: 'Projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
@@ -11,6 +11,24 @@ export const TABS = [
 ];
 
 export const tabCacheKey = (key) => TABS.find((t) => t.key === key)?.storageKey || key;
+
+export const tabIndexForKey = (key) => TABS.findIndex((t) => t.key === key);
+
+// Cross-component tab jump: sessionStorage covers remounts, the event covers
+// the already-mounted (single-page anchor) case. Same-page, no new dep.
+export const PORTFOLIO_TAB_EVENT = 'portfolio:goto-tab';
+
+export function goToPortfolioTab(index) {
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= TABS.length) return;
+  try { sessionStorage.setItem('portfolioTab', String(i)); } catch { /* best-effort */ }
+  try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+  try { window.dispatchEvent(new CustomEvent(PORTFOLIO_TAB_EVENT, { detail: i })); } catch { /* noop */ }
+  try {
+    const el = document.getElementById('Portofolio');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch { /* best-effort */ }
+}
 
 export async function fetchTabData(key, signal) {
   const meta = TABS.find((t) => t.key === key);

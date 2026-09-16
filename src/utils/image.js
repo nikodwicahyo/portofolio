@@ -22,6 +22,7 @@ export function optimizedImageUrl(url, { width = 960, quality = 80 } = {}) {
   if (!url || typeof url !== 'string') return url;
   if (url.startsWith('data:') || url.startsWith('blob:')) return url;
   if (!url.includes(SUPABASE_PUBLIC) && !url.includes(SUPABASE_RENDER)) return url;
+  if (transformState === -1) return url; // transforms 403 on this project → serve raw
   const [base, query] = splitQuery(url);
   if (isTransformed(base, query)) return url;
   const renderBase = base.replace(SUPABASE_PUBLIC, SUPABASE_RENDER);
@@ -32,8 +33,50 @@ export function optimizedImageUrl(url, { width = 960, quality = 80 } = {}) {
   return `${renderBase}?${sep}width=${w}&quality=${q}`;
 }
 
+// Transform capability probe — the /render/image/ endpoint 403s when Image
+// Transformation is disabled on the project (verified: raw 200, render 403).
+// First paint would otherwise burn one failed request per image before the
+// LazyImage fallback rescues it — and any fallback hiccup shows "Failed to load".
+// Prime once per session; when blocked, serve raw URLs directly (zero failures).
+const TRANSFORM_FLAG_KEY = 'img_transform_v1';
+const TRANSFORM_FLAG_TTL = 86400000;
+let transformState = 0; // 0 unknown, 1 ok, -1 blocked
+let probePromise = null;
+
+try {
+  const raw = localStorage.getItem(TRANSFORM_FLAG_KEY);
+  if (raw) {
+    const p = JSON.parse(raw);
+    if (p && Date.now() - p.ts < TRANSFORM_FLAG_TTL) transformState = p.ok ? 1 : -1;
+  }
+} catch { /* best-effort */ }
+
+function rememberTransform(ok) {
+  transformState = ok ? 1 : -1;
+  try { localStorage.setItem(TRANSFORM_FLAG_KEY, JSON.stringify({ ok, ts: Date.now() })); } catch { /* noop */ }
+}
+
+export function isTransformBlocked() {
+  return transformState === -1;
+}
+
+export function primeImagePipeline(sampleUrl) {
+  if (transformState !== 0 || probePromise || !sampleUrl || typeof sampleUrl !== 'string') return probePromise;
+  if (!sampleUrl.includes(SUPABASE_PUBLIC) || sampleUrl.startsWith('data:') || sampleUrl.startsWith('blob:')) return probePromise;
+  const testUrl = optimizedImageUrl(sampleUrl, { width: 640, quality: 70 });
+  if (testUrl === sampleUrl) return probePromise;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  probePromise = fetch(testUrl, { method: 'HEAD', signal: ctrl.signal, redirect: 'follow' })
+    .then((r) => rememberTransform(r.ok))
+    .catch(() => rememberTransform(false))
+    .finally(() => clearTimeout(timer));
+  return probePromise;
+}
 // "url640 640w, url960 960w, ..." for retina sharpness; browser picks smallest sufficient.
+// Blocked transforms → undefined (raw src already served, no stacked 403s).
 export function projectSrcSet(url, widths = [640, 960, 1280]) {
+  if (isTransformBlocked()) return undefined;
   if (!url || typeof url !== 'string') return undefined;
   if (url.startsWith('data:') || url.startsWith('blob:')) return undefined;
   if (!url.includes(SUPABASE_PUBLIC) && !url.includes(SUPABASE_RENDER)) return undefined;

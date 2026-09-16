@@ -1,18 +1,15 @@
 import { getSupabase } from "../supabase";
+import { TABS, tabCacheKey, PROJECTS_CACHE_KEY } from "../services/portfolio";
+import { primeImagePipeline } from "./image";
 
-export const PROJECTS_CACHE_KEY = "projects_v2";
+export { PROJECTS_CACHE_KEY };
 
-const TAB_META = [
-  { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
-  { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
-  { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
-  { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
-];
+const TAB_META = TABS;
 
 const CACHE_TTL = 86400000;
 const MAX_CACHE_BYTES = 100 * 1024;
 
-const cacheKey = (meta) => meta.storageKey || meta.key;
+const cacheKey = (meta) => tabCacheKey(meta.key);
 
 export function clearStaleCache() {
   try {
@@ -59,7 +56,13 @@ export async function prefetchPortfolioData() {
         let q = sb.from(meta.key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
         if (typeof q.abortSignal === 'function') q = q.abortSignal(ctrl.signal);
         const { data, error } = await q;
-        if (!error && data) save(meta, data);
+        if (!error && data) {
+          save(meta, data);
+          // Prime transform probe with the first project image (off critical path).
+          if (meta.key === 'projects' && data[0]?.img) {
+            try { primeImagePipeline(data[0].img); } catch { /* best-effort */ }
+          }
+        }
       } catch (e) {
         if (e?.name !== 'AbortError') console.error(`[prefetch:${meta.key}]`, e?.message || e);
       } finally {

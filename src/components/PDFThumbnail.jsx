@@ -64,17 +64,23 @@ const renderPDFToDataUrl = async (url) => {
 };
 
 const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
-  const [thumbnail, setThumbnail] = useState(null);
+  // ponytail: sync cache init — back-switch renders instantly, no observer/pulse.
+  const cached = thumbnailCache.get(pdfUrl) ?? null;
+  const [thumbnail, setThumbnail] = useState(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(!!cached);
   const ref = useRef(null);
 
   useEffect(() => {
-    if (thumbnailCache.has(pdfUrl)) {
-      setThumbnail(thumbnailCache.get(pdfUrl));
+    const hit = thumbnailCache.get(pdfUrl);
+    if (hit) {
+      setThumbnail(hit);
+      setIsVisible(true);
       return;
     }
+    setThumbnail(null);
+    setIsVisible(false);
 
     let observer = null;
     const timer = setTimeout(() => {

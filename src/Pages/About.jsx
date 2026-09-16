@@ -4,6 +4,7 @@ import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch"
+import { goToPortfolioTab } from "../services/portfolio"
 import { onPortfolioDataUpdated } from "../utils/realtimeSync"
 
 // Memoized Components
@@ -179,6 +180,7 @@ const AboutPage = () => {
   }, [countVersion]);
 
   // Memoized stats data
+  // tab: TABS index in services/portfolio.js (0 Experiences, 1 Projects, 2 Certificates)
   const statsData = useMemo(() => [
     {
       icon: Code,
@@ -186,6 +188,7 @@ const AboutPage = () => {
       label: "Total Projects",
       description: "Innovative web solutions crafted",
       animation: "fade-right",
+      tab: 1,
     },
     {
       icon: Award,
@@ -193,6 +196,7 @@ const AboutPage = () => {
       label: "Certificates",
       description: "Professional skills validated",
       animation: "fade-up",
+      tab: 2,
     },
     {
       icon: Globe,
@@ -200,6 +204,7 @@ const AboutPage = () => {
       label: "Years of Experience",
       description: "Continuous learning journey",
       animation: "fade-left",
+      tab: 0,
     },
   ], [counts.projects, counts.certificates, counts.yearsExperience]);
 
@@ -237,7 +242,7 @@ const AboutPage = () => {
               data-aos="fade-right"
               data-aos-duration="1500"
             >
-              Fresh Graduate in Computer Science from Gunadarma University with hands-on experience in Artificial Intelligence, Full-Stack Software Development, 
+              Graduate in Computer Science from Gunadarma University with hands-on experience in Artificial Intelligence, Full-Stack Software Development, 
               and IT Infrastructure through internships at the Financial Services Authority (OJK) and the Ministry of Foreign Affairs of the Republic of Indonesia. 
               Proficient in Python, Golang, PHP, JavaScript, and SQL, with experience developing AI-powered solutions and machine learning models, full-stack applications, 
               database and server systems across Windows and Linux environments. Skilled in translating complex technical and organizational requirements into scalable and data-driven solutions.
@@ -263,7 +268,7 @@ const AboutPage = () => {
 
             <div className="flex flex-col lg:flex-row items-center lg:items-start gap-4 lg:gap-4 lg:px-0 w-full">
               <CVViewerButton />
-              <a href="#Portofolio" className="w-full lg:w-auto">
+              <a href="#Portofolio" onClick={() => goToPortfolioTab(1)} className="w-full lg:w-auto">
               <button 
                 data-aos="fade-up"
                 data-aos-duration="1000"
@@ -278,13 +283,13 @@ const AboutPage = () => {
           <ProfileImage />
         </div>
 
-        <a href="#Portofolio">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 cursor-pointer">
-            {statsData.map((stat) => (
-              <StatCard key={stat.label} {...stat} />
-            ))}
-          </div>
-        </a>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+          {statsData.map((stat) => (
+            <a key={stat.label} href="#Portofolio" onClick={() => goToPortfolioTab(stat.tab)} className="cursor-pointer block">
+              <StatCard {...stat} />
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );

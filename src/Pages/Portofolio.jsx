@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 
 import { getSupabase } from "../supabase";
-import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
+import { TABS, tabCacheKey, PORTFOLIO_TAB_EVENT } from "../services/portfolio";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 import { formatDateShort, formatDateLong } from "../utils/format";
+import { optimizedImageUrl, primeImagePipeline } from "../utils/image";
 
 import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
@@ -39,7 +40,10 @@ const ToggleButton = ({ onClick, isShowingMore }) => (
   </button>
 );
 
-function TabPanel({ children, value, index, ...other }) {
+function TabPanel({ children, value, index, mounted, ...other }) {
+  // ponytail: mount-once-then-keep — hidden via CSS, never unmounted, so
+  // images/animations/data survive back-switch.
+  if (!mounted) return null;
   return (
     <div
       role="tabpanel"
@@ -49,7 +53,7 @@ function TabPanel({ children, value, index, ...other }) {
       className="px-1 sm:p-6"
       {...other}
     >
-      {value === index && children}
+      {children}
     </div>
   );
 }
@@ -58,6 +62,7 @@ TabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
   value: PropTypes.number.isRequired,
+  mounted: PropTypes.bool,
 };
 
 function a11yProps(index) {
@@ -71,13 +76,14 @@ function a11yProps(index) {
 
 const ExperienceCard = memo(({ exp, onSelect }) => {
   const fmt = (d) => formatDateShort(d);
+  const logo = optimizedImageUrl(exp.logo_url, { width: 192, quality: 70 });
   return (
     <div className="relative group cursor-pointer" onClick={() => onSelect(exp)}>
       <div className="relative bg-surface border border-edge rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:border-edge-strong hover:bg-elevated">
         <div className="flex items-start gap-3 mb-3">
           {exp.logo_url ? (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-soft shrink-0">
-              <LazyImage src={exp.logo_url} alt={exp.company} className="w-full h-full object-cover" />
+              <LazyImage src={logo} fallbackSrc={exp.logo_url} alt={exp.company} loading="eager" decoding="async" className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-soft border border-edge flex items-center justify-center shrink-0">
@@ -120,6 +126,7 @@ const ExperienceCard = memo(({ exp, onSelect }) => {
 const ExperienceModal = ({ experience, onClose }) => {
   if (!experience) return null;
   const fmt = (d) => formatDateLong(d);
+  const logo = optimizedImageUrl(experience.logo_url, { width: 256, quality: 75 });
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose} style={{ animation: 'fadeIn 0.2s ease-out' }}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" style={{ animation: 'fadeIn 0.2s ease-out' }} />
@@ -137,7 +144,7 @@ const ExperienceModal = ({ experience, onClose }) => {
             <div className="flex items-start gap-3 sm:gap-4">
               {experience.logo_url ? (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-soft shrink-0">
-                  <LazyImage src={experience.logo_url} alt={experience.company} className="w-full h-full object-cover" />
+                  <LazyImage src={logo} fallbackSrc={experience.logo_url} alt={experience.company} loading="eager" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-soft border border-edge flex items-center justify-center shrink-0">
@@ -224,15 +231,15 @@ const ExperienceTimeline = memo(({ experiences, onSelect, visited, isMobile = fa
           >
             <div className="absolute left-4 sm:left-6 md:left-1/2 top-5 md:top-6 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-primary ring-4 ring-bg md:-translate-x-1/2 z-10" />
 
-            <div className="md:hidden">
+            {isMobile ? (
               <ExperienceCard exp={exp} onSelect={onSelect} />
-            </div>
-
-            <div className="hidden md:grid grid-cols-[5fr_2fr_5fr] items-start">
-              <div>{even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
-              <div />
-              <div>{!even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
-            </div>
+            ) : (
+              <div className="hidden md:grid grid-cols-[5fr_2fr_5fr] items-start">
+                <div>{even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
+                <div />
+                <div>{!even && <ExperienceCard exp={exp} onSelect={onSelect} />}</div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -241,33 +248,30 @@ const ExperienceTimeline = memo(({ experiences, onSelect, visited, isMobile = fa
 );});
 ExperienceTimeline.displayName = "ExperienceTimeline";
 
-// Single source of truth: order matches UI Tabs [Experiences, Projects, Certificates, Tech].
-const TAB_META = [
-  { key: 'experiences', order: { field: 'start_date', asc: false }, select: 'id,position,company,logo_url,start_date,end_date,location,description' },
-  { key: 'projects', order: { field: 'id', asc: false }, select: 'id,title,description,img,link,github,tech_stack,features', storageKey: PROJECTS_CACHE_KEY },
-  { key: 'certificates', order: { field: 'id', asc: false }, select: 'id,img' },
-  { key: 'tech_stacks', order: { field: 'display_order', asc: true }, select: 'id,icon,name,display_order' },
-];
+// Single source of truth lives in services/portfolio.js (UI index === TABS index).
+const TAB_META = TABS;
 
 const EMPTY = [];
 const CACHE_TTL = 86400000;
 const MAX_CACHE_BYTES = 100 * 1024;
 const TIME_SLOTS = [5000, 10000, 15000];
 
-  const cacheKey = (key) => {
-    const m = TAB_META.find((t) => t.key === key);
-    return m?.storageKey || key;
-  };
+// ponytail: in-memory mirror — tab switches skip localStorage JSON.parse entirely.
+const memCache = new Map();
+
+  const cacheKey = (key) => tabCacheKey(key);
 
   function useTabData() {
     const initial = {};
     for (const { key } of TAB_META) {
+      const mem = memCache.get(key);
+      if (mem?.length > 0) { initial[key] = { data: mem, loading: false, error: null, fetched: true }; continue; }
       try {
         const raw = localStorage.getItem(cacheKey(key));
       if (raw) {
         const p = JSON.parse(raw);
         const data = Array.isArray(p) ? p : p.data;
-        if (data && data.length > 0) { initial[key] = { data, loading: false, error: null, fetched: true }; continue; }
+        if (data && data.length > 0) { memCache.set(key, data); initial[key] = { data, loading: false, error: null, fetched: true }; continue; }
       }
     } catch { /* invalid cache */ }
     initial[key] = { data: EMPTY, loading: false, error: null, fetched: false };
@@ -285,6 +289,7 @@ const TIME_SLOTS = [5000, 10000, 15000];
 
   const cache = (key, data) => {
     if (data.length === 0) return;
+    memCache.set(key, data);
     const payload = JSON.stringify({ data, timestamp: Date.now() });
     if (payload.length > MAX_CACHE_BYTES) return;
     for (let i = 0; i < 2; i++) {
@@ -314,12 +319,18 @@ const TIME_SLOTS = [5000, 10000, 15000];
       if (!force && raw) {
         const p = JSON.parse(raw);
         if (!Array.isArray(p) && p.data?.length > 0 && Date.now() - p.timestamp < CACHE_TTL) {
+          memCache.set(key, p.data);
+          if (mounted.current && reqId.current[key] === myReq) {
+            setState(prev => ({ ...prev, [key]: { data: p.data, loading: false, error: null, fetched: true } }));
+          }
           fetching.current[key] = false; return;
         }
       }
     } catch { /* invalid cache */ }
 
-    setState(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
+    // SWR: keep stale data visible, only show spinner when nothing cached.
+    const hasStale = (memCache.get(key)?.length ?? 0) > 0;
+    if (!hasStale) setState(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (!mounted.current || reqId.current[key] !== myReq) { fetching.current[key] = false; return; }
@@ -403,6 +414,8 @@ export default function FullWidthTabs() {
   const initialItems = isMobile ? 4 : 6;
   const [visitedTabs, setVisitedTabs] = useState(() => new Set());
   const prevTabRef = useRef(value);
+  // ponytail: mount-once-then-keep — first visit mounts, afterwards hidden only.
+  const [mountedTabs, setMountedTabs] = useState(() => new Set([value]));
 
   useEffect(() => {
     if (value === prevTabRef.current) return;
@@ -412,7 +425,33 @@ export default function FullWidthTabs() {
       return next;
     });
     prevTabRef.current = value;
+    setMountedTabs((prev) => {
+      if (prev.has(value)) return prev;
+      const next = new Set(prev);
+      next.add(value);
+      return next;
+    });
+    // Hidden tabs measure wrong offsets — refresh AOS after switch.
+    try {
+      const t = setTimeout(() => { try { import("aos").then((m) => m.default?.refresh?.()); } catch { /* noop */ } }, 50);
+      return () => clearTimeout(t);
+    } catch { /* best-effort */ }
   }, [value]);
+
+  useEffect(() => {
+    const onGotoTab = (e) => {
+      const i = Number(e?.detail);
+      if (!Number.isInteger(i) || i < 0 || i >= TAB_META.length) return;
+      try { sessionStorage.removeItem('scrollToPortfolio'); } catch { /* noop */ }
+      setValue(i);
+      try {
+        const el = document.getElementById('Portofolio');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch { /* best-effort */ }
+    };
+    window.addEventListener(PORTFOLIO_TAB_EVENT, onGotoTab);
+    return () => window.removeEventListener(PORTFOLIO_TAB_EVENT, onGotoTab);
+  }, []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -433,6 +472,12 @@ export default function FullWidthTabs() {
     // ponytail: no force-all thundering fetch on mount.
     const key = TAB_META[value]?.key || TAB_META[0].key;
     fetchTab(key, 2, false);
+    // Prime transform probe from cached project image (repeat visits skip prefetch).
+    try {
+      const raw = localStorage.getItem(tabCacheKey('projects'));
+      const first = raw && JSON.parse(raw)?.data?.[0]?.img;
+      if (first) primeImagePipeline(first);
+    } catch { /* best-effort */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -443,7 +488,10 @@ export default function FullWidthTabs() {
   }, [value, tabData, fetchTab]);
 
   useEffect(() => {
-    return onPortfolioDataUpdated((table) => fetchTab(table, 2, true));
+    return onPortfolioDataUpdated((table) => {
+      try { memCache.delete(table); } catch { /* best-effort */ }
+      fetchTab(table, 2, true);
+    });
   }, [fetchTab]);
 
   const handleChange = (event, newValue) => {
@@ -482,7 +530,7 @@ export default function FullWidthTabs() {
 
   const sectionContent = (loading, data, error, fetched, shimmer, icon, emptyMsg, done, key) => {
     if ((loading || !fetched) && data.length === 0) return shimmer;
-    if (error && data.length === 0) return <ErrorState msg={error} onRetry={() => fetchTab(key)} />;
+    if (error && data.length === 0) return <ErrorState msg={error} onRetry={() => { try { memCache.delete(key); } catch { /* noop */ } fetchTab(key, 2, true); }} />;
     if (!loading && data.length === 0) return emptyState(icon, emptyMsg);
     return done;
   };
@@ -618,8 +666,8 @@ export default function FullWidthTabs() {
           </Tabs>
         </AppBar>
 
-        <TabPanel value={value} index={0}>
-          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.experiences ? "" : "tab-fade-in"}`}>
+        <TabPanel value={value} index={0} mounted={mountedTabs.has(0)}>
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 0 ? "tab-fade-in" : ""}`}>
             <ExpSection />
             {selectedExperience && (
               <ExperienceModal experience={selectedExperience} onClose={() => setSelectedExperience(null)} />
@@ -627,20 +675,20 @@ export default function FullWidthTabs() {
           </div>
         </TabPanel>
 
-        <TabPanel value={value} index={1}>
-          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.projects ? "" : "tab-fade-in"}`}>
+        <TabPanel value={value} index={1} mounted={mountedTabs.has(1)}>
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 1 ? "tab-fade-in" : ""}`}>
             <ProjectSection />
           </div>
         </TabPanel>
 
-        <TabPanel value={value} index={2}>
-          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.certificates ? "" : "tab-fade-in"}`}>
+        <TabPanel value={value} index={2} mounted={mountedTabs.has(2)}>
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 2 ? "tab-fade-in" : ""}`}>
             <CertSection />
           </div>
         </TabPanel>
 
-        <TabPanel value={value} index={3}>
-          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${visited.tech ? "" : "tab-fade-in"}`}>
+        <TabPanel value={value} index={3} mounted={mountedTabs.has(3)}>
+          <div className={`w-full px-0 sm:px-4 py-2 sm:py-4 ${value === 3 ? "tab-fade-in" : ""}`}>
             <TechSection />
           </div>
         </TabPanel>

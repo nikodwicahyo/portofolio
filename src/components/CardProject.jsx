@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { Link } from "react-router-dom";
+import { memo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
@@ -10,8 +10,32 @@ const CARD_SIZES = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw";
 
 const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) => {
   const safeLink = safeExternalUrl(ProjectLink);
+  const navigate = useNavigate();
+  const detailPath = id ? `/project/${toSlug(Title)}` : null;
+
+  const openDetail = useCallback(() => {
+    if (!detailPath) return;
+    try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+    navigate(detailPath);
+  }, [navigate, detailPath]);
+
+  const onKeyDown = useCallback((e) => {
+    if (!detailPath) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetail();
+    }
+  }, [detailPath, openDetail]);
+
   return (
-    <div className="group relative w-full">
+    <div
+      className={`group relative w-full ${detailPath ? "cursor-pointer" : ""}`}
+      onClick={detailPath ? openDetail : undefined}
+      onKeyDown={detailPath ? onKeyDown : undefined}
+      tabIndex={detailPath ? 0 : undefined}
+      role={detailPath ? "link" : undefined}
+      aria-label={detailPath ? `View details of ${Title}` : undefined}
+    >
       <div className="relative overflow-hidden rounded-xl bg-surface border border-edge transition-all duration-300 hover:border-edge-strong hover:bg-elevated">
         <div className="relative p-4 sm:p-5 z-10">
           <div className="relative overflow-hidden rounded-lg">
@@ -42,6 +66,7 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
                   href={safeLink}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1.5 sm:gap-2 text-primary hover:text-primary transition-colors duration-200 text-xs sm:text-sm"
                 >
                   <span className="font-medium">Live Demo</span>
@@ -54,7 +79,10 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
               {id ? (
                 <Link
                   to={`/project/${toSlug(Title)}`}
-                  onClick={() => sessionStorage.setItem('scrollToPortfolio', 'true')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+                  }}
                   className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-soft hover:bg-soft-strong text-primary transition-all duration-200 hover:border-edge-strong border border-edge text-xs sm:text-sm"
                 >
                   <span className="font-medium">Details</span>
