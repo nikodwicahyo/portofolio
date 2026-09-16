@@ -1,0 +1,11 @@
+# ponytail: verify_jwt=false because the Supabase gateway rejects the
+# browser's auth-less OPTIONS preflight before it reaches the function,
+# which surfaces as a CORS error. Auth is enforced manually inside each
+# function (sanitize-svg checks admin role; submit-comment is public).
+[functions.sanitize-svg]
+enabled = true
+verify_jwt = false
+
+[functions.submit-comment]
+enabled = true
+verify_jwt = false
