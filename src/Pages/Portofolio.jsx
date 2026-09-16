@@ -512,9 +512,19 @@ export default function FullWidthTabs() {
   const toggleShowMore = useCallback((type) => {
     // Collapsing shrinks the page but the browser keeps the old scroll offset,
     // stranding the user below the content — bring the button back into view.
-    const collapsing = type === 'projects' ? showAllProjects : showAllCertificates;
-    if (type === 'projects') setShowAllProjects(p => !p);
+    const isProjects = type === 'projects';
+    const collapsing = isProjects ? showAllProjects : showAllCertificates;
+    if (isProjects) setShowAllProjects(p => !p);
     else setShowAllCertificates(p => !p);
+    // Newly mounted rows must not re-animate — mark the section as seen so
+    // entrance() renders them statically from this render on.
+    setVisitedTabs((prev) => {
+      const idx = isProjects ? 1 : 2;
+      if (prev.has(idx)) return prev;
+      const next = new Set(prev);
+      next.add(idx);
+      return next;
+    });
     if (collapsing) {
       const ref = type === 'projects' ? projectsToggleRef : certsToggleRef;
       setTimeout(() => {
