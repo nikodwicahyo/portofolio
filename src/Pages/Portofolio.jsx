@@ -552,7 +552,7 @@ export default function FullWidthTabs() {
         ))}
       </div>
       {projects.length > initialItems && (
-        <div className="mt-6 w-full flex justify-center sm:justify-start">
+        <div className="mt-6 w-full flex justify-center">
           <ToggleButton onClick={() => toggleShowMore('projects')} isShowingMore={showAllProjects} />
         </div>
       )}
@@ -570,7 +570,7 @@ export default function FullWidthTabs() {
         ))}
       </div>
       {certificates.length > initialItems && (
-        <div className="mt-6 w-full flex justify-center sm:justify-start">
+        <div className="mt-6 w-full flex justify-center">
           <ToggleButton onClick={() => toggleShowMore('certificates')} isShowingMore={showAllCertificates} />
         </div>
       )}
