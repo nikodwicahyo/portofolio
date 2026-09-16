@@ -19,7 +19,7 @@ const ContactPage = () => {
       Swal.fire({
         icon: 'error', title: 'Configuration Error',
         text: 'Contact form is not configured. Please try again later.',
-        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)',
+        confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)',
       });
       return;
     }
@@ -55,7 +55,7 @@ const ContactPage = () => {
         title: 'Success!',
         text: 'Your message has been sent successfully!',
         icon: 'success',
-        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+        confirmButtonColor: 'var(--invert)',
         background: 'var(--elevated)',
         color: 'var(--primary)',
         timer: 2000,
@@ -73,7 +73,7 @@ const ContactPage = () => {
         title: 'Failed!',
         text: message,
         icon: 'error',
-        confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+        confirmButtonColor: 'var(--invert)',
         background: 'var(--elevated)',
         color: 'var(--primary)'
       });

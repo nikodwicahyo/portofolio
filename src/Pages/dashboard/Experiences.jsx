@@ -400,10 +400,10 @@ export default function Experiences() {
   const handleCreate = async (form, file) => {
     if (uploading) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = validateImageFile(file);
-      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     }
     setUploading(true);
     let logoUrl = "";
@@ -412,7 +412,7 @@ export default function Experiences() {
         try {
           logoUrl = await uploadLogo(file);
         } catch (upErr) {
-          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
           return;
         }
       }
@@ -431,7 +431,7 @@ export default function Experiences() {
       notifyPortfolioChanged();
     } catch (err) {
       if (logoUrl) await removeOrphanLogo(logoUrl);
-      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
     }
@@ -440,10 +440,10 @@ export default function Experiences() {
   const handleEdit = async (form, file) => {
     if (uploading) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = validateImageFile(file);
-      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     }
     setUploading(true);
     const oldLogo = editExperience.logo_url || "";
@@ -453,7 +453,7 @@ export default function Experiences() {
         try {
           logoUrl = await uploadLogo(file);
         } catch (upErr) {
-          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
           return;
         }
       }
@@ -476,7 +476,7 @@ export default function Experiences() {
       notifyPortfolioChanged();
     } catch (err) {
       if (logoUrl && file) await removeOrphanLogo(logoUrl);
-      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
     }
@@ -489,17 +489,17 @@ export default function Experiences() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
-      cancelButtonColor: 'var(--soft-strong)', cancelButtonTextColor: 'var(--primary)',
+      cancelButtonColor: 'var(--soft-strong)',
       confirmButtonText: 'Delete',
       background: 'var(--elevated)',
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     const target = experiences.find((e) => e.id === id);
     const { error } = await sb.from("experiences").delete().eq("id", id);
-    if (error) { Swal.fire({ icon: 'error', title: 'Failed', text: error.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (error) { Swal.fire({ icon: 'error', title: 'Failed', text: error.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (target?.logo_url) await removeImage("experience-logos", target.logo_url);
     fetchExperiences(true);
     notifyPortfolioChanged();

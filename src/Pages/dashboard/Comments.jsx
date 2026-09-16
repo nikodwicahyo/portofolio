@@ -87,7 +87,7 @@ export default function Comments() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
-      cancelButtonColor: 'var(--soft-strong)', cancelButtonTextColor: 'var(--primary)',
+      cancelButtonColor: 'var(--soft-strong)',
       confirmButtonText: 'Delete',
       background: 'var(--elevated)',
       color: 'var(--primary)',

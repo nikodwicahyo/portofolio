@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
     });
   if (upErr) {
     console.error('[sanitize-svg] upload failed:', upErr.message);
-    return json(500, { error: 'Could not store sanitized SVG.' });
+    // ponytail: surface storage cause (e.g. missing svg-assets bucket) — admin-only endpoint.
+    return json(500, { error: `Could not store sanitized SVG (${upErr.message}).` });
   }
   const { data } = admin.storage.from('svg-assets').getPublicUrl(key);
   return json(200, { ok: true, publicUrl: data.publicUrl });

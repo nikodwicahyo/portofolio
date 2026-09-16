@@ -16,14 +16,14 @@ export default function Login() {
     setLoading(true)
     const sb = getSupabase();
     if (!sb) {
-      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Service unavailable. Please try again later.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Service unavailable. Please try again later.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
       setLoading(false);
       return
     }
     const { data, error } = await sb.auth.signInWithPassword({ email, password })
     if (error) {
       // Generic message: avoids user-enumeration via provider error strings.
-      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Invalid email or password.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Invalid email or password.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
       setLoading(false);
       return
     }
@@ -33,7 +33,7 @@ export default function Login() {
 
     if (profile?.role !== 'admin') {
       await sb.auth.signOut()
-      Swal.fire({ icon: 'error', title: 'Access Denied', text: 'You do not have admin access.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Access Denied', text: 'You do not have admin access.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
       setLoading(false)
       return
     }

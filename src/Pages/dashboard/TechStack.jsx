@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "../../supabase";
-import { validateImageFile, validateSvgFile, removeImage } from "../../services/storage.js";
+import { validateImageFile, validateSvgFile, removeImageByUrl } from "../../services/storage.js";
 import { uploadSanitizedSvg, isSvgFile } from "../../services/svgUpload.js";
 import { toStorageKey } from "../../utils/storageKey";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
@@ -378,10 +378,10 @@ export default function TechStack() {
   const handleCreate = async (form, file) => {
     if (uploading) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
-      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     }
     setUploading(true);
     let iconUrl = "";
@@ -390,7 +390,7 @@ export default function TechStack() {
         try {
           iconUrl = await uploadIcon(file);
         } catch (upErr) {
-          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
           return;
         }
       }
@@ -406,8 +406,8 @@ export default function TechStack() {
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {
-      if (iconUrl) await removeImage(ICON_BUCKET, iconUrl);
-      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      if (iconUrl) await removeImageByUrl(iconUrl, ICON_BUCKET);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
     }
@@ -416,10 +416,10 @@ export default function TechStack() {
   const handleEdit = async (form, file) => {
     if (uploading) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
-      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+      if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     }
     setUploading(true);
     const oldIcon = editItem.icon || "";
@@ -429,7 +429,7 @@ export default function TechStack() {
         try {
           iconUrl = await uploadIcon(file);
         } catch (upErr) {
-          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+          Swal.fire({ icon: 'error', title: 'Failed', text: upErr.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
           return;
         }
       }
@@ -490,12 +490,12 @@ export default function TechStack() {
         .eq("id", editItem.id);
       if (error) throw error;
       setEditItem(null);
-      if (file && oldIcon && oldIcon !== iconUrl) await removeImage(ICON_BUCKET, oldIcon);
+      if (file && oldIcon && oldIcon !== iconUrl) await removeImageByUrl(oldIcon, ICON_BUCKET);
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {
-      if (file && iconUrl && iconUrl !== oldIcon) await removeImage(ICON_BUCKET, iconUrl);
-      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      if (file && iconUrl && iconUrl !== oldIcon) await removeImageByUrl(iconUrl, ICON_BUCKET);
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
     } finally {
       setUploading(false);
     }
@@ -508,23 +508,23 @@ export default function TechStack() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
-      cancelButtonColor: 'var(--soft-strong)', cancelButtonTextColor: 'var(--primary)',
+      cancelButtonColor: 'var(--soft-strong)',
       confirmButtonText: 'Delete',
       background: 'var(--elevated)',
       color: 'var(--primary)',
     });
     if (!result.isConfirmed) return;
     const sb = getSupabase();
-    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     try {
       const target = items.find((i) => i.id === id);
       const { error } = await sb.from("tech_stacks").delete().eq("id", id);
       if (error) throw error;
-      if (target?.icon) await removeImage(ICON_BUCKET, target.icon);
+      if (target?.icon) await removeImageByUrl(target.icon, ICON_BUCKET);
       fetchItems(true);
       notifyPortfolioChanged();
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)', background: 'var(--elevated)', color: 'var(--primary)' });
+      Swal.fire({ icon: 'error', title: 'Failed', text: err.message, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
     }
   };
 

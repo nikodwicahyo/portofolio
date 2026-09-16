@@ -111,7 +111,7 @@ const showUnavailable = (title, text) => {
     title,
     text,
     confirmButtonText: "Mengerti",
-    confirmButtonColor: 'var(--invert)', confirmButtonTextColor: 'var(--invert-text)',
+    confirmButtonColor: 'var(--invert)',
     background: 'var(--elevated)',
     color: 'var(--primary)',
   });

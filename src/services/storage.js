@@ -78,3 +78,24 @@ export async function removeImage(bucket, publicUrl) {
   const { error } = await sb.storage.from(bucket).remove([p]);
   if (error) console.error(`[storage] remove ${bucket}/${p} failed:`, error.message);
 }
+
+// Bucket-aware delete: tech-stack icons live in svg-assets (SVG, via
+// sanitize-svg) or project-images (raster). Derives the bucket from the URL
+// so callers can't orphan files in the wrong bucket.
+export async function removeImageByUrl(publicUrl, fallbackBucket) {
+  const bucket = storageBucketFromUrl(publicUrl) || fallbackBucket;
+  if (!bucket) return;
+  return removeImage(bucket, publicUrl);
+}
+
+function storageBucketFromUrl(publicUrl) {
+  if (!publicUrl || typeof publicUrl !== 'string') return null;
+  try {
+    const u = new URL(publicUrl);
+    const parts = u.pathname.split('/storage/v1/object/public/');
+    if (parts.length === 2) return decodeURIComponent(parts[1].split('/')[0] || '') || null;
+    return null;
+  } catch {
+    return null;
+  }
+}
