@@ -99,7 +99,7 @@ const Navbar = () => {
                             onClick={(e) => scrollToSection(e, "#Home")}
                             className="flex items-center gap-2 text-lg font-semibold text-primary"
                         >
-                            <img src="/Logo.png" alt="Logo" className="w-8 h-8 rounded-full" />
+                            <img src="/Logo.png" alt="Niko Dwicahyo Widiyanto logo" className="w-8 h-8 rounded-full" />
                             Niko Dwicahyo Widiyanto
                         </a>
                     </div>

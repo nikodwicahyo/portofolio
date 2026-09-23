@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <!-- Basic -->
   <meta charset="UTF-8" />
@@ -9,7 +9,6 @@
   <!-- preload Google Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- ponytail: early DNS for Supabase storage/CDN (exact origin preconnected at runtime) -->
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
   <link
@@ -17,13 +16,14 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
   >
   
-  <!-- SEO Utama -->
-  <title>Niko Dwicahyo Widiyanto | Full-Stack Web Developer | AI Engineer</title>
-  <meta name="description" content="Website resmi Niko Dwicahyo Widiyanto, Full-Stack Web Developer dan AI Engineer. Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan." />
-  <meta name="keywords" content="Niko Dwicahyo Widiyanto, Full-Stack Web Developer, AI Engineer, nikodwchy, Portofolio Niko" />
+  <!-- SEO -->
+  <title>Niko Dwicahyo Widiyanto | Full-Stack Web Developer & AI Engineer</title>
+  <meta name="description" content="Portfolio of Niko Dwicahyo Widiyanto, Full-Stack Web Developer and AI Engineer building AI-powered web apps, machine learning solutions, and scalable digital experiences." />
+  <meta name="keywords" content="Niko Dwicahyo Widiyanto, Full-Stack Web Developer, AI Engineer, Machine Learning, Python, Golang, JavaScript, Portfolio" />
   <meta name="author" content="Niko Dwicahyo Widiyanto" />
+  <meta name="robots" content="index, follow" />
 
-  <!-- Google Search Console -->
+  <!-- Google Search Console: verified via google614380a1e5106c66.html -->
 
 
   <!-- Theme / PWA -->
@@ -48,20 +48,28 @@
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://ekizr.com/" />
-  <meta property="og:title" content="Niko Dwicahyo Widiyanto | Full-Stack Web Developer | AI Engineer" />
-  <meta property="og:description" content="Website resmi dan portofolio Niko Dwicahyo Widiyanto, Full-Stack Web Developer, dan AI Engineer." />
-  <meta property="og:image" content="https://ekizr.com/Meta.png" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="id_ID" />
+  <meta property="og:site_name" content="Niko Dwicahyo Widiyanto" />
+  <meta property="og:url" content="https://nikodwicahyo.vercel.app/" />
+  <meta property="og:title" content="Niko Dwicahyo Widiyanto | Full-Stack Web Developer & AI Engineer" />
+  <meta property="og:description" content="Portfolio of Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer building AI-powered web apps and scalable digital experiences." />
+  <meta property="og:image" content="https://nikodwicahyo.vercel.app/Photo.jpeg" />
+  <meta property="og:image:alt" content="Portrait of Niko Dwicahyo Widiyanto" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://ekizr.com/" />
-  <meta name="twitter:title" content="Niko Dwicahyo Widiyanto | Full-Stack Web Developer | AI Engineer" />
-  <meta name="twitter:description" content="Website resmi dan portofolio Niko Dwicahyo Widiyanto." />
-  <meta name="twitter:image" content="https://ekizr.com/Meta.png" />
+  <meta name="twitter:url" content="https://nikodwicahyo.vercel.app/" />
+  <meta name="twitter:title" content="Niko Dwicahyo Widiyanto | Full-Stack Web Developer & AI Engineer" />
+  <meta name="twitter:description" content="Portfolio of Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer." />
+  <meta name="twitter:image" content="https://nikodwicahyo.vercel.app/Photo.jpeg" />
+  <meta name="twitter:image:alt" content="Portrait of Niko Dwicahyo Widiyanto" />
 
-  <!-- Canonical -->
-  <link rel="canonical" href="https://ekizr.com/" />
+  <!-- Canonical + language alternates (single URL serves en & id) -->
+  <link rel="canonical" href="https://nikodwicahyo.vercel.app/" />
+  <link rel="alternate" hreflang="en" href="https://nikodwicahyo.vercel.app/" />
+  <link rel="alternate" hreflang="id" href="https://nikodwicahyo.vercel.app/" />
+  <link rel="alternate" hreflang="x-default" href="https://nikodwicahyo.vercel.app/" />
 
   <!-- Structured Data: Person -->
   <script type="application/ld+json">
@@ -69,25 +77,30 @@
     "@context": "https://schema.org",
     "@type": "Person",
     "name": "Niko Dwicahyo Widiyanto",
-    "url": "https://ekizr.com",
-    "image": "https://ekizr.com/Photo.jpg",
-    "jobTitle": "Full-Stack Web Developer, AI Engineerr, IT Infrastructure",
-    "description": "Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan.",
+    "url": "https://nikodwicahyo.vercel.app",
+    "image": "https://nikodwicahyo.vercel.app/Photo.jpeg",
+    "jobTitle": "Full-Stack Web Developer, AI Engineer, IT Infrastructure",
+    "description": "Portfolio of Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer building AI-powered web apps and scalable digital experiences.",
+    "inLanguage": ["en", "id"],
     "sameAs": [
       "https://www.linkedin.com/in/nikodwicahyo/",
       "https://www.instagram.com/nikodwchy/",
-      "https://github.com/nikodwicahyo",
+      "https://github.com/nikodwicahyo"
     ]
   }
   </script>
 </head>
 
 <body>
-  <!-- Konten teks penting untuk SEO -->
-  <header style="display:none">
-    <h1>Niko Dwicahyo WIdiyanto</h1>
+  <!-- Key text for SEO crawlers (en + id). Visually hidden, not display:none,
+       so crawlers that skip display:none content can still read it. -->
+  <header style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0">
+    <h1>Niko Dwicahyo Widiyanto</h1>
     <p>
-      Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan.
+      Portfolio of Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer building AI-powered web apps and scalable digital experiences.
+    </p>
+    <p lang="id">
+      Portofolio Niko Dwicahyo Widiyanto — Full-Stack Web Developer dan AI Engineer yang membangun aplikasi web berbasis AI dan solusi digital yang scalable.
     </p>
   </header>
 

@@ -110,7 +110,7 @@ const showUnavailable = (title, text) => {
     icon: "info",
     title,
     text,
-    confirmButtonText: "Mengerti",
+    confirmButtonText: "Got it",
     confirmButtonColor: 'var(--invert)',
     background: 'var(--elevated)',
     color: 'var(--primary)',
@@ -267,7 +267,7 @@ const ProjectDetails = () => {
     );
   }
 
-  const projectUrl = `https://ekizr.com/project/${toSlug(project.title)}`;
+  const projectUrl = `https://nikodwicahyo.vercel.app/project/${toSlug(project.title)}`;
 
   return (
     <>
@@ -278,7 +278,7 @@ const ProjectDetails = () => {
           content={
             project.description
               ? project.description.slice(0, 155)
-              : `Project ${project.title} oleh Niko Dwicahyo Widiyanto - Full Stack Web Developer.`
+              : `Project ${project.title} by Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer.`
           }
         />
         <meta name="robots" content="index, follow" />
@@ -292,8 +292,9 @@ const ProjectDetails = () => {
           content={project.description?.slice(0, 155)}
         />
         <meta property="og:url" content={projectUrl} />
-        <meta property="og:type" content="website" />
+        <meta property="og:type" content="article" />
         {project.img && <meta property="og:image" content={fullHdUrl(project.img)} />}
+        {project.img && <meta property="og:image:alt" content={project.title} />}
         {project.img && <link rel="preload" as="image" href={projectDetailUrl(project.img)} imageSrcSet={projectSrcSet(project.img, [960, 1280, 1600])} imageSizes="(max-width: 1024px) 100vw, 50vw" />}
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
@@ -304,7 +305,7 @@ const ProjectDetails = () => {
           author: {
             '@type': 'Person',
             name: 'Niko Dwicahyo Widiyanto',
-            url: 'https://ekizr.com',
+            url: 'https://nikodwicahyo.vercel.app',
           },
         })}</script>
       </Helmet>
@@ -349,7 +350,7 @@ const ProjectDetails = () => {
                 <div className="flex flex-wrap gap-3 md:gap-4">
                   <ProjectActionButton
                     href={project.link}
-                    onClick={() => showUnavailable("Live Demo Tidak Tersedia", "Demo untuk proyek ini belum ditambahkan.")}
+                    onClick={() => showUnavailable("Live Demo Not Available", "Demo for this project is not available to the public")}
                     className="bg-invert text-invert-text hover:bg-invert-hover"
                     icon={ExternalLink}
                     label="Live Demo"
@@ -358,8 +359,8 @@ const ProjectDetails = () => {
                   <ProjectActionButton
                     href={project.github && project.github !== "Private" ? project.github : null}
                     onClick={() => showUnavailable(
-                      project.github === "Private" ? "Source Code Private" : "GitHub Tidak Tersedia",
-                      project.github === "Private" ? "Maaf, source code untuk proyek ini bersifat privat." : "Link GitHub untuk proyek ini belum ditambahkan."
+                      project.github === "Private" ? "Source Code Private" : "GitHub Not Available",
+                      project.github === "Private" ? "Sorry, the source code for this project is private." : "The GitHub link for this project is not available."
                     )}
                     className="bg-soft text-primary hover:bg-soft-strong border border-edge-strong"
                     icon={Github}

@@ -136,7 +136,7 @@ const WelcomeScreen = ({ onLoadingComplete }) => {
                 data-aos-delay="1200"
               >
                 <a
-                  href="https://ekizr.com"
+                  href="https://nikodwicahyo.vercel.app"
                   className="inline-flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-full border border-edge bg-soft transition-all duration-300 hover:border-edge-strong"
                   target="_blank"
                   rel="noopener noreferrer"

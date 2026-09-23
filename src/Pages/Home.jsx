@@ -134,13 +134,13 @@ const Home = () => {
   return (
     <>
       <Helmet>
-        <title>Niko Dwicahyo Widiyanto - Full Stack Web Developer - AI Engineer</title>
-        <meta name="description" content="Website resmi Niko Dwicahyo Widiyanto, Full Stack Web Developer, AI Engineer. Saya berfokus pada penciptaan pengalaman digital yang menarik dan selalu berupaya memberikan solusi terbaik dalam setiap proyek yang saya kerjakan." />
-     <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://ekizr.com" />
-        <meta property="og:title" content="Niko Dwicahyo Widiyanto - Full Stack Web Developer - AI Engineer" />
-     <meta property="og:description" content="Website resmi dan portofolio Niko Dwicahyo Widiyanto, Full-Stack Web Developer." />
-        <meta property="og:url" content="https://ekizr.com" />
+        <title>Niko Dwicahyo Widiyanto - Full Stack Web Developer & AI Engineer</title>
+        <meta name="description" content="Portfolio of Niko Dwicahyo Widiyanto, Full Stack Web Developer and AI Engineer building AI-powered web apps, machine learning solutions, and scalable digital experiences." />
+      <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://nikodwicahyo.vercel.app/" />
+        <meta property="og:title" content="Niko Dwicahyo Widiyanto - Full Stack Web Developer & AI Engineer" />
+      <meta property="og:description" content="Portfolio of Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer building AI-powered web apps." />
+        <meta property="og:url" content="https://nikodwicahyo.vercel.app" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">{`
           {
@@ -148,7 +148,7 @@ const Home = () => {
             "@type": "Person",
             "name": "Niko Dwicahyo Widiyanto",
             "jobTitle": "Full Stack Web Developer, AI Engineer",
-            "url": "https://ekizr.com",
+            "url": "https://nikodwicahyo.vercel.app",
             "sameAs": [
               "https://github.com/nikodwicahyo/",
               "https://www.linkedin.com/in/nikodwicahyo/",
@@ -214,7 +214,7 @@ const Home = () => {
                   <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
                     <LazyImage
                       src="Animation2.gif"
-                      alt="Developer Animation"
+                      alt="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
                       className={`w-full h-full object-contain transition-all duration-500 ${
                         isHovering 
                           ? "scale-[95%] sm:scale-[90%] md:scale-[90%] lg:scale-[90%] rotate-2" 

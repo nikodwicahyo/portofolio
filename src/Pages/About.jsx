@@ -42,7 +42,7 @@ const ProfileImage = memo(() => (
           <div className="absolute inset-0 border-4 border-edge rounded-full z-20 transition-all duration-700 group-hover:border-edge-strong group-hover:scale-105" />
           <LazyImage
             src="/Photo.jpeg"
-            alt="Profile"
+            alt="Portrait of Niko Dwicahyo Widiyanto, Full-Stack Web Developer and AI Engineer"
             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
           />
         </div>
