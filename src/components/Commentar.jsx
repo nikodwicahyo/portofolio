@@ -16,7 +16,7 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
         {isPinned && (
             <div className="flex items-center gap-2 mb-3 text-primary">
                 <Pin className="w-4 h-4" />
-                <span className="text-xs font-medium uppercase tracking-wide">Pinned Comment by Admin</span>
+                <span className="text-xs font-medium uppercase tracking-wide">Pinned Comment</span>
             </div>
         )}
         <div className="flex items-start gap-3">
