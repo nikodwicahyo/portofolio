@@ -360,7 +360,7 @@ const ProjectDetails = () => {
                     href={project.github && project.github !== "Private" ? project.github : null}
                     onClick={() => showUnavailable(
                       project.github === "Private" ? "Source Code Private" : "GitHub Not Available",
-                      project.github === "Private" ? "Sorry, the source code for this project is private." : "The GitHub link for this project is not available."
+                      project.github === "Private" ? "Sorry, the source code for this project is private." : "GitHub for this project is not available."
                     )}
                     className="bg-soft text-primary hover:bg-soft-strong border border-edge-strong"
                     icon={Github}
