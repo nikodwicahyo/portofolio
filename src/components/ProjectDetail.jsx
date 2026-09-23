@@ -268,6 +268,8 @@ const ProjectDetails = () => {
   }
 
   const projectUrl = `https://nikodwicahyo.vercel.app/project/${toSlug(project.title)}`;
+  // ponytail: no usable URL (empty or "private" marker, any case/space) → private dialog
+  const githubUrl = safeExternalUrl(project.github);
 
   return (
     <>
@@ -357,14 +359,14 @@ const ProjectDetails = () => {
                   />
 
                   <ProjectActionButton
-                    href={project.github && project.github !== "Private" ? project.github : null}
+                    href={githubUrl}
                     onClick={() => showUnavailable(
-                      project.github === "Private" ? "Source Code Private" : "GitHub Not Available",
-                      project.github === "Private" ? "Sorry, the source code for this project is private." : "GitHub for this project is not available."
+                      "Source Code Private",
+                      "Sorry, the source code for this project is private."
                     )}
                     className="bg-soft text-primary hover:bg-soft-strong border border-edge-strong"
                     icon={Github}
-                    label="Github"
+                    label={githubUrl ? "Github" : "Private"}
                   />
                 </div>
 
