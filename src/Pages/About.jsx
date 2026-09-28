@@ -243,8 +243,8 @@ const AboutPage = () => {
               data-aos-duration="1500"
             >
               Graduate in Computer Science from Gunadarma University with hands-on experience in Artificial Intelligence, Full-Stack Software Development, 
-              and IT Infrastructure through internships at the Financial Services Authority (OJK) and the Ministry of Foreign Affairs of the Republic of Indonesia. 
-              Proficient in Python, Golang, PHP, JavaScript, and SQL, with experience developing AI-powered solutions and machine learning models, full-stack applications, 
+              and IT Infrastructure through internships at the Financial Services Authority of Indonesia (OJK) and the Ministry of Foreign Affairs of the Republic of Indonesia. 
+              Proficient in Python, Go-lang, PHP, JavaScript, and SQL, with experience developing AI-powered solutions and machine learning models, full-stack applications, 
               database and server systems across Windows and Linux environments. Skilled in translating complex technical and organizational requirements into scalable and data-driven solutions.
             </p>
 
