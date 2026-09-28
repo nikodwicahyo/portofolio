@@ -11,6 +11,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { isBase64DataUrl } from "../utils/fileType";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { silenceWarn } from "../utils/silentWarn";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -116,9 +117,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
       canvas.width = thumbViewport.width;
       canvas.height = thumbViewport.height;
       const ctx = canvas.getContext("2d");
-      const warn = console.warn; console.warn = () => {};
-      await page.render({ canvasContext: ctx, viewport: thumbViewport }).promise;
-      console.warn = warn;
+      const restoreWarn = silenceWarn();
+      try {
+        await page.render({ canvasContext: ctx, viewport: thumbViewport }).promise;
+      } finally {
+        restoreWarn();
+      }
       imgs.push(canvas.toDataURL("image/jpeg", 0.6));
     }
     setThumbnails(imgs);
@@ -137,7 +141,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
     setThumbnails([]);
 
     const loadPdf = async () => {
-      const warn = console.warn; console.warn = () => {};
+      const restoreWarn = silenceWarn();
       try {
         const src = isBase64DataUrl(pdfUrl)
           ? { data: base64ToUint8Array(pdfUrl.split(",")[1]) }
@@ -151,7 +155,7 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
         if (!cancelled) console.error("PDF load failed:", err);
       } finally {
         if (!cancelled) setLoading(false);
-        console.warn = warn;
+        restoreWarn();
       }
     };
     loadPdf();
@@ -199,9 +203,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           canvas.style.height = `${viewport.height}px`;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-          const warn = console.warn; console.warn = () => {};
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          console.warn = warn;
+          const restoreWarn = silenceWarn();
+          try {
+            await page.render({ canvasContext: ctx, viewport }).promise;
+          } finally {
+            restoreWarn();
+          }
         }
       } else {
         if (obRef.current) { obRef.current.disconnect(); obRef.current = null; }
@@ -233,9 +240,12 @@ const PDFViewerModal = ({ pdfUrl, isOpen, onClose, showDownload, filename = "doc
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
           if (i < lo || i > hi) continue;
-          const warn = console.warn; console.warn = () => {};
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          console.warn = warn;
+          const restoreWarn = silenceWarn();
+          try {
+            await page.render({ canvasContext: ctx, viewport }).promise;
+          } finally {
+            restoreWarn();
+          }
         }
       }
 

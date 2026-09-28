@@ -515,6 +515,13 @@ export default function FullWidthTabs() {
     if (tab && !tab.fetched && !tab.loading && !tab.error) fetchTab(meta.key);
   }, [value, tabData, fetchTab]);
 
+  // Certificates tab may be image-only (no projects cache to prime from):
+  // probe the transform pipeline as soon as its data lands, so image cards
+  // mount with the right URL strategy instead of failing first then retrying.
+  useEffect(() => {
+    if (certificates[0]?.img) primeImagePipeline(certificates[0].img);
+  }, [certificates]);
+
   useEffect(() => {
     return onPortfolioDataUpdated((table) => {
       try { memCache.delete(table); } catch { /* best-effort */ }

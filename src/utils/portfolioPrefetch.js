@@ -58,8 +58,8 @@ export async function prefetchPortfolioData() {
         const { data, error } = await q;
         if (!error && data) {
           save(meta, data);
-          // Prime transform probe with the first project image (off critical path).
-          if (meta.key === 'projects' && data[0]?.img) {
+          // Prime transform probe with the first row image (off critical path).
+          if ((meta.key === 'projects' || meta.key === 'certificates') && data[0]?.img) {
             try { primeImagePipeline(data[0].img); } catch { /* best-effort */ }
           }
         }

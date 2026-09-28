@@ -63,6 +63,9 @@ export function isTransformBlocked() {
 export function primeImagePipeline(sampleUrl) {
   if (transformState !== 0 || probePromise || !sampleUrl || typeof sampleUrl !== 'string') return probePromise;
   if (!sampleUrl.includes(SUPABASE_PUBLIC) || sampleUrl.startsWith('data:') || sampleUrl.startsWith('blob:')) return probePromise;
+  // PDFs pass through this bucket too — probing /render/image/ on one 400s
+  // and would flag transforms as blocked for every real image. Never probe them.
+  if (/\.pdf(\?|$)/i.test(sampleUrl)) return probePromise;
   const testUrl = optimizedImageUrl(sampleUrl, { width: 640, quality: 70 });
   if (testUrl === sampleUrl) return probePromise;
   const ctrl = new AbortController();

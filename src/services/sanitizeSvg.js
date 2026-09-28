@@ -21,8 +21,8 @@ export function sanitizeSvg(raw) {
   // <svg onload=...> and <svg/onload=...> spellings.
   s = s.replace(/[\s/]on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
   // Neutralize javascript:/data:text/html hrefs (keep #fragment + https).
-  s = s.replace(/\s+(xlink:)?href\s*=\s*("|\')\s*javascript:[^"\']*("|\')/gi, ' href="#removed"');
-  s = s.replace(/\s+(xlink:)?href\s*=\s*("|\')\s*data:text\/html[^"\']*("|\')/gi, ' href="#removed"');
+  s = s.replace(/\s+(xlink:)?href\s*=\s*("|')\s*javascript:[^"']*("|')/gi, ' href="#removed"');
+  s = s.replace(/\s+(xlink:)?href\s*=\s*("|')\s*data:text\/html[^"']*("|')/gi, ' href="#removed"');
   // Final gate: nothing executable may remain.
   const bad =
     /<script|on\w+\s*=|foreignObject|<!ENTITY|javascript:|data:text\/html|data:image\/svg|vbscript:/i.test(s);

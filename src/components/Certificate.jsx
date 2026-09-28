@@ -9,7 +9,18 @@ import { optimizedImageUrl, projectSrcSet } from "../utils/image";
 
 // Split pdf.js out of the portfolio chunk: thumbnails and the viewer load on demand.
 const PDFThumbnail = lazy(() => import("./PDFThumbnail"));
-const PDFViewerModal = lazy(() => import("./PDFViewerModal"));
+const loadPDFViewer = () => import("./PDFViewerModal");
+const PDFViewerModal = lazy(loadPDFViewer);
+
+// Hover = intent. Warm the viewer chunk (and its shared pdf.js chunk) so the
+// first click opens instantly. Skipped on data-saver / 2G.
+const warmPDFViewer = () => {
+  try {
+    const conn = navigator.connection;
+    if (conn?.saveData || /(^|\s)(slow-)?2g/.test(conn?.effectiveType || "")) return;
+  } catch { /* best-effort */ }
+  loadPDFViewer().catch(() => {});
+};
 
 const ThumbFallback = () => (
   <Box sx={{ width: "100%", aspectRatio: "16/11.5" }} className="bg-soft animate-pulse rounded" />
@@ -33,8 +44,11 @@ const Certificate = memo(({ ImgSertif }) => {
 
   return (
     <Box component="div" sx={{ width: "100%" }}>
-      {/* Thumbnail Container */}
+      {/* Thumbnail Container — onMouseEnter here (not inner box): the hover
+          overlay covers the whole card and would swallow the event. */}
       <Box
+        component="div"
+        onMouseEnter={isPdf ? warmPDFViewer : undefined}
         sx={{
           position: "relative",
           overflow: "hidden",

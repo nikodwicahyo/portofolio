@@ -1,11 +1,53 @@
 import { useState, useEffect, useRef, memo } from "react";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { preconnectSupabase } from "../utils/image";
+import { getThumb, putThumb } from "../utils/pdfThumbStore";
+import { silenceWarn } from "../utils/silentWarn";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// ponytail: pdf.js loads dynamically — a cache-hit visit never downloads the
+// ~400KB main chunk or the ~1.2MB worker at all. Shared async chunk with
+// PDFViewerModal (both import("pdfjs-dist")).
+let pdfjsPromise = null;
+const loadPdfjs = () => {
+  if (!pdfjsPromise) {
+    pdfjsPromise = Promise.all([
+      import("pdfjs-dist"),
+      import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+    ])
+      .then(([pdfjs, worker]) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        return pdfjs;
+      })
+      .catch((err) => {
+        pdfjsPromise = null;
+        throw err;
+      });
+  }
+  return pdfjsPromise;
+};
 
-const thumbnailCache = new Map();
+// url -> object URL, session-lifetime LRU. IndexedDB covers cross-session.
+const thumbUrls = new Map();
 const CACHE_MAX = 20;
+// url -> in-flight promise: concurrent mounts of one PDF share one render.
+const inflight = new Map();
+
+const touch = (url) => {
+  const v = thumbUrls.get(url);
+  thumbUrls.delete(url);
+  thumbUrls.set(url, v);
+};
+
+const remember = (url, objUrl) => {
+  thumbUrls.set(url, objUrl);
+  if (thumbUrls.size > CACHE_MAX) {
+    const oldest = thumbUrls.keys().next().value;
+    if (oldest) {
+      const revoked = thumbUrls.get(oldest);
+      thumbUrls.delete(oldest);
+      try { URL.revokeObjectURL(revoked); } catch { /* noop */ }
+    }
+  }
+};
 
 const base64ToUint8Array = (base64) => {
   const stripped = base64.replace(/\s/g, "");
@@ -25,52 +67,69 @@ const getPDFData = (pdfUrl) => {
   return { url: pdfUrl };
 };
 
-const renderPDFToDataUrl = async (url) => {
-  if (thumbnailCache.has(url)) {
-    const val = thumbnailCache.get(url);
-    thumbnailCache.delete(url);
-    thumbnailCache.set(url, val);
-    return val;
-  }
+const renderPdfBlob = async (pdfUrl) => {
+  const pdfjsLib = await loadPdfjs();
+  const pdfData = getPDFData(pdfUrl);
+  const restoreWarn = silenceWarn();
+  let pdf = null;
+  try {
+    const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
+    pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
 
-    const pdfData = getPDFData(url);
-    const warn = console.warn; console.warn = () => {};
-    let pdf = null;
-    try {
-      const loadingTask = pdfjsLib.getDocument({ ...pdfData, verbosity: pdfjsLib.VerbosityLevel.ERRORS });
-      pdf = await loadingTask.promise;
-      const page = await pdf.getPage(1);
+    // HD: render at ~960px wide (not 1.0 scale) so the stretched thumbnail
+    // stays sharp on retina. Capped for perf; results live in IndexedDB.
+    // ponytail: one render per URL, no new dep; ceiling = ~3MP canvas encode.
+    const baseViewport = page.getViewport({ scale: 1.0 });
+    const scale = Math.min(3, 960 / baseViewport.width);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
 
-      // HD: render at ~960px wide (not 1.0 scale) so the stretched thumbnail
-      // stays sharp on retina. Capped for perf; result is LRU-cached above.
-      // ponytail: one render per URL, no new dep; ceiling = ~3MP canvas encode.
-      const baseViewport = page.getViewport({ scale: 1.0 });
-      const scale = Math.min(3, 960 / baseViewport.width);
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
 
-      const ctx = canvas.getContext("2d");
-      const task = page.render({ canvasContext: ctx, viewport });
-      await task.promise;
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    thumbnailCache.set(url, dataUrl);
-    if (thumbnailCache.size > CACHE_MAX) {
-      const oldest = thumbnailCache.keys().next().value;
-      if (oldest) thumbnailCache.delete(oldest);
-    }
-    return dataUrl;
+    // toBlob encodes off the base64 string path: smaller memory, no giant
+    // data: URLs held in the cache, blob goes straight into IndexedDB.
+    const blob = await new Promise((resolve) => {
+      try { canvas.toBlob(resolve, "image/jpeg", 0.85); } catch { resolve(null); }
+    });
+    if (!blob || blob.size === 0) throw new Error("PDF thumbnail encode failed");
+    return blob;
   } finally {
     try { await pdf?.destroy(); } catch { /* already destroyed */ }
-    console.warn = warn;
+    restoreWarn();
   }
+};
+
+const ensureThumbUrl = (pdfUrl) => {
+  const hit = thumbUrls.get(pdfUrl);
+  if (hit) { touch(pdfUrl); return Promise.resolve(hit); }
+  const pending = inflight.get(pdfUrl);
+  if (pending) return pending;
+
+  const p = (async () => {
+    // First cert can be PDF-only — no LazyImage mounts, so preconnect here.
+    preconnectSupabase(pdfUrl);
+    let blob = await getThumb(pdfUrl); // null on miss or IDB unavailability
+    if (!blob) {
+      blob = await renderPdfBlob(pdfUrl);
+      putThumb(pdfUrl, blob); // fire-and-forget; never blocks paint
+    }
+    const objUrl = URL.createObjectURL(blob);
+    remember(pdfUrl, objUrl);
+    return objUrl;
+  })();
+  inflight.set(pdfUrl, p);
+  const done = () => inflight.delete(pdfUrl);
+  p.then(done, done);
+  return p;
 };
 
 const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
   // ponytail: sync cache init — back-switch renders instantly, no observer/pulse.
-  const cached = thumbnailCache.get(pdfUrl) ?? null;
+  const cached = thumbUrls.get(pdfUrl) ?? null;
   const [thumbnail, setThumbnail] = useState(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -78,8 +137,9 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
   const ref = useRef(null);
 
   useEffect(() => {
-    const hit = thumbnailCache.get(pdfUrl);
+    const hit = thumbUrls.get(pdfUrl);
     if (hit) {
+      touch(pdfUrl);
       setThumbnail(hit);
       setIsVisible(true);
       return;
@@ -87,8 +147,9 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
     setThumbnail(null);
     setIsVisible(false);
 
+    // Observe immediately — the old 200ms delay only slowed first paint.
     let observer = null;
-    const timer = setTimeout(() => {
+    if (typeof IntersectionObserver !== "undefined" && ref.current) {
       observer = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
@@ -98,10 +159,11 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
         },
         { rootMargin: "200px" }
       );
-      if (ref.current) observer.observe(ref.current);
-    }, 200);
-
-    return () => { clearTimeout(timer); if (observer) observer.disconnect(); };
+      observer.observe(ref.current);
+    } else {
+      setIsVisible(true); // no observer support → just render
+    }
+    return () => { if (observer) observer.disconnect(); };
   }, [pdfUrl]);
 
   useEffect(() => {
@@ -111,10 +173,10 @@ const PDFThumbnail = memo(({ pdfUrl, className = "", style = {} }) => {
     setLoading(true);
     setError(false);
 
-    renderPDFToDataUrl(pdfUrl)
-      .then((dataUrl) => {
+    ensureThumbUrl(pdfUrl)
+      .then((objUrl) => {
         if (!cancelled) {
-          setThumbnail(dataUrl);
+          setThumbnail(objUrl);
           setLoading(false);
         }
       })
