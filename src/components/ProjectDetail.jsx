@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { getSupabase } from "../supabase";
+import { trackEvent } from "../utils/analytics";
 import { normalizeSlug, toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
 import { fullHdUrl, projectDetailUrl, projectSrcSet } from "../utils/image";
@@ -128,7 +129,7 @@ const ProjectActionButton = ({ href, onClick, className, icon: Icon, label }) =>
   const shared = `group relative inline-flex items-center space-x-1.5 md:space-x-2 px-4 md:px-8 py-2.5 md:py-4 font-medium rounded-xl transition-all duration-300 text-sm md:text-base ${className}`;
   if (safeHref) {
     return (
-      <a href={safeHref} target="_blank" rel="noopener noreferrer" className={shared}>
+      <a href={safeHref} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent(label === 'Github' ? 'github_click' : 'project_click', { title: document.title })} className={shared}>
         {content}
       </a>
     );
@@ -171,6 +172,7 @@ const ProjectDetails = () => {
     const applyProject = (p) => {
       if (cancelled) return;
       setProject(p);
+      if (p) trackEvent('project_detail_view', { title: p.title });
     };
 
     let storedProjects = [];

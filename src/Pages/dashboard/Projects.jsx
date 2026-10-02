@@ -415,6 +415,13 @@ export default function Projects() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const fail = (text) => { Swal.fire({ icon: 'error', title: 'Failed', text, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); };
+    const title = (form.Title || '').trim();
+    if (!title) { fail('Title is required.'); return; }
+    // ponytail: validate on write so stored links are always render-safe, not just display-safe.
+    for (const [label, val] of [['Live URL', form.Link], ['GitHub URL', form.Github]]) {
+      if (val && !safeExternalUrl(val)) { fail(`${label} is not a valid http(s) URL.`); return; }
+    }
     if (file) {
       const vErr = validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -431,7 +438,7 @@ export default function Projects() {
         }
       }
       const { error } = await sb.from("projects").insert({
-        title: form.Title,
+        title,
         description: form.Description,
         img: imgUrl,
         tech_stack: form.TechStack.split(",")
@@ -459,6 +466,12 @@ export default function Projects() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const fail = (text) => { Swal.fire({ icon: 'error', title: 'Failed', text, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); };
+    const title = (form.Title || '').trim();
+    if (!title) { fail('Title is required.'); return; }
+    for (const [label, val] of [['Live URL', form.Link], ['GitHub URL', form.Github]]) {
+      if (val && !safeExternalUrl(val)) { fail(`${label} is not a valid http(s) URL.`); return; }
+    }
     if (file) {
       const vErr = validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -478,7 +491,7 @@ export default function Projects() {
       const { error } = await sb
         .from("projects")
         .update({
-          title: form.Title,
+          title,
           description: form.Description,
           img: imgUrl,
           tech_stack: form.TechStack.split(",")

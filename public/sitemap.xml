@@ -5,4 +5,7 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <!-- Project detail pages (/project/:slug) are canonicalized per-project via
+       react-helmet (see ProjectDetail.jsx) and intentionally omitted here:
+       slugs are DB-driven and change without a deploy. -->
 </urlset>

@@ -7,9 +7,19 @@ export async function submitComment({ userName, content }) {
   if (!name || !body) throw new Error('Please enter your name and message.');
   if (name.length > 15) throw new Error('Name must be 15 characters or fewer.');
   if (body.length > 200) throw new Error('Message must be 200 characters or fewer.');
+  // Mirror server spam guard so users get instant feedback without a round-trip.
+  const links = (body.match(/https?:\/\//gi) || []).length;
+  if (/<script|javascript:|data:/i.test(body) || links > 2) {
+    throw new Error('Links and markup are not allowed in comments.');
+  }
+  // ponytail: 1 comment per 30s per browser, mirrors server WINDOW_SECONDS.
+  try {
+    const last = Number(localStorage.getItem('comment_last_at') || 0);
+    if (Date.now() - last < 30 * 1000) throw new Error('You are commenting too fast. Please wait a bit.');
+  } catch (e) { if (e?.message?.includes('too fast')) throw e; }
 
-  // ponytail: is_pinned hardcoded, never caller-controlled.
-  const payload = { user_name: name, content: body, is_pinned: false };
+  // ponytail: canonical contract is camelCase; snake_case kept for legacy callers.
+  const payload = { userName: name, user_name: name, content: body, is_pinned: false };
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -20,6 +30,7 @@ export async function submitComment({ userName, content }) {
       { content: body, user_name: name, is_pinned: false, created_at: new Date().toISOString() },
     ]);
     if (error) throw new Error('Failed to post comment. Please try again.');
+    try { localStorage.setItem('comment_last_at', String(Date.now())); } catch { /* best-effort */ }
   };
 
   if (!baseUrl) {
@@ -48,7 +59,10 @@ export async function submitComment({ userName, content }) {
       }
       throw new Error(message || 'Failed to post comment. Please try again.');
     }
-    return res.json().catch(() => undefined);
+    return res.json().catch(() => undefined).then((out) => {
+      try { localStorage.setItem('comment_last_at', String(Date.now())); } catch { /* best-effort */ }
+      return out;
+    });
   } catch (err) {
     if (err instanceof TypeError) {
       console.warn('submit-comment function unavailable, falling back to direct insert.', err);

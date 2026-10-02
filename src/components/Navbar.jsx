@@ -71,11 +71,15 @@ const Navbar = () => {
         e.preventDefault();
         const section = document.querySelector(href);
         if (section) {
-            const top = section.offsetTop - 100;
+            // getBoundingClientRect is document-accurate; offsetTop breaks when
+            // the target is nested inside positioned ancestors (Contact section).
+            const top = section.getBoundingClientRect().top + window.scrollY - 100;
             window.scrollTo({
                 top: top,
                 behavior: "smooth"
             });
+            // preventDefault blocks the native hash change — sync URL without a jump.
+            try { window.history.replaceState(null, "", href); } catch { /* best-effort */ }
         }
         setIsOpen(false);
     };

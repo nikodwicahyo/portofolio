@@ -401,6 +401,12 @@ export default function Experiences() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const fail = (text) => { Swal.fire({ icon: 'error', title: 'Failed', text, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); };
+    const company = (form.company || '').trim();
+    const position = (form.position || '').trim();
+    if (!company || !position) { fail('Company and position are required.'); return; }
+    if (!form.start_date) { fail('Start date is required.'); return; }
+    if (form.end_date && form.end_date < form.start_date) { fail('End date cannot be before start date.'); return; }
     if (file) {
       const vErr = validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -417,8 +423,8 @@ export default function Experiences() {
         }
       }
       const { error } = await sb.from("experiences").insert({
-        company: form.company,
-        position: form.position,
+        company,
+        position,
         description: form.description || null,
         start_date: form.start_date,
         end_date: form.end_date || null,
@@ -441,6 +447,12 @@ export default function Experiences() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const fail = (text) => { Swal.fire({ icon: 'error', title: 'Failed', text, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); };
+    const company = (form.company || '').trim();
+    const position = (form.position || '').trim();
+    if (!company || !position) { fail('Company and position are required.'); return; }
+    if (!form.start_date) { fail('Start date is required.'); return; }
+    if (form.end_date && form.end_date < form.start_date) { fail('End date cannot be before start date.'); return; }
     if (file) {
       const vErr = validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -460,8 +472,8 @@ export default function Experiences() {
       const { error } = await sb
         .from("experiences")
         .update({
-          company: form.company,
-          position: form.position,
+          company,
+          position,
           description: form.description || null,
           start_date: form.start_date,
           end_date: form.end_date || null,

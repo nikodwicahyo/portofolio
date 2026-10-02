@@ -39,7 +39,7 @@ export default function Comments() {
     try {
       const { data, error } = await sb
         .from("portfolio_comments")
-        .select("id,user_name,content,created_at,is_pinned")
+        .select("id,user_name,content,profile_image,created_at,is_pinned")
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;

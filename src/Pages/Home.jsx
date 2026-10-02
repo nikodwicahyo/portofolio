@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram } from "lucide-react"
 import LazyImage from "../components/LazyImage"
+import { goToPortfolioTab } from "../services/portfolio"
 
 const StatusBadge = memo(() => (
   <div className="inline-block lg:mx-0" data-aos="zoom-in" data-aos-delay="400">
         <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-edge-strong bg-soft">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       <span className="text-primary sm:text-sm text-[0.7rem] font-medium">
-        Ready to Innovate
+        Open to work · Jakarta / Remote
       </span>
     </div>
   </div>
@@ -26,14 +27,14 @@ const MainTitle = memo(() => (
 MainTitle.displayName = "MainTitle";
 
 const TechStack = memo(({ tech }) => (
-  <div className="px-4 py-2 rounded-full bg-soft border border-edge text-xs text-secondary hover:text-primary hover:border-edge-strong transition-colors">
+  <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-soft border border-edge text-[0.65rem] sm:text-xs text-secondary hover:text-primary hover:border-edge-strong transition-colors whitespace-nowrap shrink-0">
     {tech}
   </div>
 ));
 TechStack.displayName = "TechStack";
 
-const CTAButton = memo(({ href, text, icon: Icon, primary = false }) => (
-  <a href={href}>
+const CTAButton = memo(({ href, onClick, text, icon: Icon, primary = false }) => (
+  <a href={href} onClick={onClick}>
     <button className={`relative w-[160px] h-11 rounded-lg text-sm font-medium transition-all duration-300 active:scale-[0.98] ${
       primary
         ? "bg-invert text-invert-text hover:bg-invert-hover"
@@ -183,7 +184,7 @@ const Home = () => {
                   </p>
 
                   {/* Tech Stack */}
-                  <div className="flex flex-wrap gap-3 justify-start" data-aos="fade-up" data-aos-delay="1200">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 justify-start max-w-xl" data-aos="fade-up" data-aos-delay="1200">
                     {TECH_STACK.map((tech, index) => (
                       <TechStack key={index} tech={tech} />
                     ))}
@@ -191,7 +192,7 @@ const Home = () => {
 
                   {/* CTA Buttons */}
                   <div className="flex flex-row gap-3 w-full justify-start" data-aos="fade-up" data-aos-delay="1400">
-                    <CTAButton href="#Portofolio" text="Experiences" icon={ExternalLink} primary />
+                    <CTAButton href="#Portofolio" onClick={() => goToPortfolioTab(0)} text="My Experiences" icon={ExternalLink} primary />
                     <CTAButton href="#Contact" text="Contact" icon={Mail} />
                   </div>
 
@@ -215,6 +216,7 @@ const Home = () => {
                     <LazyImage
                       src="Animation2.gif"
                       alt="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
+                      decoding="async"
                       className={`w-full h-full object-contain transition-all duration-500 ${
                         isHovering 
                           ? "scale-[95%] sm:scale-[90%] md:scale-[90%] lg:scale-[90%] rotate-2" 

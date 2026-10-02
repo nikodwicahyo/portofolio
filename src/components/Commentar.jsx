@@ -270,7 +270,7 @@ const Komentar = () => {
                     />
                 </div>
                 <div
-                    className="space-y-4 h-[480px] overflow-y-auto overflow-x-hidden pt-1 pr-1"
+                    className="space-y-4 h-[500px] overflow-y-auto overflow-x-hidden pt-1 pr-1"
                     data-aos="fade-up"
                     data-aos-delay="200"
                 >

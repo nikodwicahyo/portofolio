@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { getSupabase } from "../supabase";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
+import { trackEvent } from "../utils/analytics";
 import { FileText, Loader2 } from "lucide-react";
 
 // Split pdf.js out of the landing chunk: viewer loads only when opened.
@@ -41,7 +42,7 @@ const CVViewerButton = () => {
       if (!sb) { applyCv(null); return; }
       const { data } = await sb
         .from("cv_documents")
-        .select("id,filename,created_at")
+        .select("id,filename,created_at,updated_at")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -69,6 +70,7 @@ const CVViewerButton = () => {
   const handleView = async () => {
     if (cv?.file_data) {
       setOpenPdf(true);
+      trackEvent('cv_view');
       return;
     }
     // ponytail: lazy full fetch only on click; metadata cache keeps mount free
@@ -81,6 +83,7 @@ const CVViewerButton = () => {
           setCv(data);
           setLoading(false);
           setOpenPdf(true);
+          trackEvent('cv_view');
           return;
         }
       }

@@ -247,6 +247,13 @@ const AboutPage = () => {
               Proficient in Python, Go-lang, PHP, JavaScript, and SQL, with experience developing AI-powered solutions and machine learning models, full-stack applications, 
               database and server systems across Windows and Linux environments. Skilled in translating complex technical and organizational requirements into scalable and data-driven solutions.
             </p>
+            <p
+              className="text-xs sm:text-sm text-secondary"
+              data-aos="fade-right"
+              data-aos-duration="1500"
+            >
+              <span className="text-primary font-medium">Based in Jakarta, Indonesia · Open to remote &amp; on-site · Junior Full-Stack / AI Engineer roles.</span>
+            </p>
 
                {/* Quote Section */}
       <div 

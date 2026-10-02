@@ -4,6 +4,10 @@ import Komentar from "../components/Commentar";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { useForm } from "react-hook-form";
+import { trackEvent } from "../utils/analytics";
+
+const CONTACT_EMAIL = "nikodwchy@gmail.com";
+const CONTACT_COOLDOWN_MS = 60 * 1000;
 
 const ContactPage = () => {
   const {
@@ -14,6 +18,21 @@ const ContactPage = () => {
   } = useForm();
 
   const onSubmit = async (data) => {
+    // Honeypot: bots fill it, humans never see it.
+    if (data.company) return;
+    // Client rate-limit: 1 message / 60s per browser.
+    try {
+      const last = Number(localStorage.getItem('contact_last_at') || 0);
+      if (Date.now() - last < CONTACT_COOLDOWN_MS) {
+        Swal.fire({
+          title: 'Slow down',
+          text: 'Please wait a minute before sending another message — or email me directly below.',
+          icon: 'info',
+          confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)',
+        });
+        return;
+      }
+    } catch { /* best-effort */ }
     const accessKey = import.meta.env.VITE_FORMLY_ACCESS_KEY;
     if (!accessKey) {
       Swal.fire({
@@ -63,6 +82,8 @@ const ContactPage = () => {
       });
 
       reset();
+      try { localStorage.setItem('contact_last_at', String(Date.now())); } catch { /* best-effort */ }
+      trackEvent('contact_submit');
 
     } catch (error) {
       const message =
@@ -71,7 +92,8 @@ const ContactPage = () => {
 
       Swal.fire({
         title: 'Failed!',
-        text: message,
+        // Fallback: never lose a lead when the provider is down.
+        html: `<p>${message}</p><p class="mt-2">Or email me directly at <a href="mailto:${CONTACT_EMAIL}" style="text-decoration:underline">${CONTACT_EMAIL}</a></p>`,
         icon: 'error',
         confirmButtonColor: 'var(--invert)',
         background: 'var(--elevated)',
@@ -81,7 +103,7 @@ const ContactPage = () => {
   };
 
   return (
-    <div className="px-[5%] sm:px-[5%] lg:px-[10%] " >
+    <div className="px-[5%] sm:px-[5%] lg:px-[10%] scroll-mt-16" id="Contact">
       <div className="text-center lg:mt-[5%] mt-10 mb-2 sm:px-0 px-[5%]">
         <h2
           data-aos="fade-down"
@@ -100,8 +122,7 @@ const ContactPage = () => {
       </div>
 
       <div
-        className="h-auto py-10 flex items-center justify-center 2xl:pr-[3.1%] lg:pr-[3.8%]  md:px-0 scroll-mt-16"
-        id="Contact"
+        className="h-auto py-10 flex items-center justify-center 2xl:pr-[3.1%] lg:pr-[3.8%]  md:px-0"
       >
         <div className="container px-[1%] grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-[45%_55%] 2xl:grid-cols-[35%_65%] gap-12" >
           <div
@@ -123,6 +144,15 @@ const ContactPage = () => {
               onSubmit={handleSubmit(onSubmit)}
               className="space-y-6"
             >
+              {/* Honeypot — visually hidden, bots only. */}
+              <input
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                {...register('company')}
+                className="absolute w-px h-px opacity-0 pointer-events-none"
+              />
               <div
                 data-aos="fade-up"
                 data-aos-delay="100"
@@ -199,7 +229,13 @@ const ContactPage = () => {
               </button>
             </form>
 
-            <div className="mt-10 pt-6 border-t border-edge flex justify-center space-x-6">
+            <div className="flex items-center gap-4 mt-10" aria-hidden="true">
+              <span className="h-px flex-1 bg-edge" />
+              <span className="text-xs uppercase tracking-wider text-muted">or</span>
+              <span className="h-px flex-1 bg-edge" />
+            </div>
+
+            <div className="mt-6 flex justify-center space-x-6">
               <SocialLinks />
             </div>
           </div>

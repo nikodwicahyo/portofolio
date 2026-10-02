@@ -188,8 +188,15 @@ export default function Certificates() {
   const isSelectedPdf = file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf')
 
   const uploadCertificate = async () => {
-    if (!file) return
-    const sb = getSupabase(); if (!sb) return;
+    if (!file) {
+      Swal.fire({ icon: 'info', title: 'No File', text: 'Select a file first.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+      return
+    }
+    const sb = getSupabase();
+    if (!sb) {
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' })
+      return
+    }
     const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf')
     if (!isPdf) {
       const validationError = validateImageFile(file)

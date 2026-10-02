@@ -1,5 +1,3 @@
-import { getSupabase } from '../supabase';
-
 // Single source of truth for tab order + queries + cache keys.
 // UI index === TABS index — fixes the old TAB_META/UI mismatch.
 export const PROJECTS_CACHE_KEY = "projects_v2";
@@ -11,8 +9,6 @@ export const TABS = [
 ];
 
 export const tabCacheKey = (key) => TABS.find((t) => t.key === key)?.storageKey || key;
-
-export const tabIndexForKey = (key) => TABS.findIndex((t) => t.key === key);
 
 // Cross-component tab jump: sessionStorage covers remounts, the event covers
 // the already-mounted (single-page anchor) case. Same-page, no new dep.
@@ -28,17 +24,4 @@ export function goToPortfolioTab(index) {
     const el = document.getElementById('Portofolio');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch { /* best-effort */ }
-}
-
-export async function fetchTabData(key, signal) {
-  const meta = TABS.find((t) => t.key === key);
-  if (!meta) throw new Error(`Unknown tab "${key}"`);
-  const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured.');
-  let q = sb.from(key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
-  if (signal && typeof q.abortSignal === 'function') q = q.abortSignal(signal);
-  const { data, error } = await q;
-  if (error) throw error;
-  if (data === null) throw new Error(`Supabase returned null for "${key}"`);
-  return data;
 }

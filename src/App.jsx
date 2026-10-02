@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import AOS from "aos";
@@ -16,6 +16,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { prefetchPortfolioData, clearStaleCache } from "./utils/portfolioPrefetch";
 import { initRealtimeSync } from "./utils/realtimeSync";
+import { goAdmin } from "./utils/goAdmin";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
 const ContactPage = lazy(() => import("./Pages/Contact"));
@@ -83,6 +84,22 @@ function App() {
     try { return sessionStorage.getItem("welcomeShown") !== "1"; } catch { return true; }
   });
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Hidden admin shortcut: Ctrl/Cmd+Shift+L. Skipped while typing so
+  // dashboard edits are never interrupted by a stray keypress.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!((e.ctrlKey || e.metaKey) && e.shiftKey)) return;
+      if (String(e.key || '').toLowerCase() !== 'l') return;
+      const t = e.target;
+      if (t && (t.closest?.('input,textarea,select,[contenteditable="true"]'))) return;
+      e.preventDefault();
+      goAdmin(navigate);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navigate]);
 
   useEffect(() => {
     clearStaleCache();

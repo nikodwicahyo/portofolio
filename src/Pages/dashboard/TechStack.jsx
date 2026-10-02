@@ -379,6 +379,8 @@ export default function TechStack() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const name = (form.Name || '').trim();
+    if (!name) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Name is required.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -397,7 +399,7 @@ export default function TechStack() {
       const order = clampOrder(form.DisplayOrder);
       await makeRoomForOrder(order);
       const { error } = await sb.from("tech_stacks").insert({
-        name: form.Name,
+        name,
         icon: iconUrl,
         display_order: order,
       });
@@ -417,6 +419,8 @@ export default function TechStack() {
     if (uploading) return;
     const sb = getSupabase();
     if (!sb) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Supabase not configured.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
+    const name = (form.Name || '').trim();
+    if (!name) { Swal.fire({ icon: 'error', title: 'Failed', text: 'Name is required.', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
     if (file) {
       const vErr = isSvgFile(file) ? validateSvgFile(file) : validateImageFile(file);
       if (vErr) { Swal.fire({ icon: 'error', title: 'Failed', text: vErr, confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' }); return; }
@@ -483,7 +487,7 @@ export default function TechStack() {
       const { error } = await sb
         .from("tech_stacks")
         .update({
-          name: form.Name,
+          name,
           icon: iconUrl,
           display_order: order,
         })

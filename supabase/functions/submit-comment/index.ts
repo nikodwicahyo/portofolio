@@ -28,17 +28,23 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
 
-  let payload: { userName?: unknown; content?: unknown };
+  let payload: { userName?: unknown; user_name?: unknown; content?: unknown };
   try {
     payload = await req.json();
   } catch {
     return json(400, { error: 'Invalid JSON.' });
   }
-  const name = String(payload.userName ?? '').trim();
+  // Accept both camelCase (canonical) and snake_case (legacy client).
+  const name = String(payload.userName ?? payload.user_name ?? '').trim();
   const body = String(payload.content ?? '').trim();
   if (!name || !body) return json(400, { error: 'Name and comment are required.' });
   if (name.length > MAX_NAME) return json(400, { error: `Name too long (max ${MAX_NAME}).` });
   if (body.length > MAX_BODY) return json(400, { error: `Comment too long (max ${MAX_BODY}).` });
+  // ponytail: cheap spam guard — block markup / js: URLs, cap links at 2.
+  const links = (body.match(/https?:\/\//gi) || []).length;
+  if (/<script|javascript:|data:/i.test(body) || links > 2) {
+    return json(400, { error: 'Links and markup are not allowed in comments.' });
+  }
 
   const fwd = req.headers.get('x-forwarded-for') || '';
   const ip = fwd.split(',')[0].trim() || 'unknown';

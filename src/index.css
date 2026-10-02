@@ -238,3 +238,20 @@ body {
 .swal2-styled.swal2-cancel {
   color: var(--primary) !important;
 }
+
+/* A11y: visible keyboard focus everywhere (mouse clicks unaffected). */
+:focus-visible {
+  outline: 2px solid var(--edge-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduced motion: kill looping/entrance animation, keep layout intact. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

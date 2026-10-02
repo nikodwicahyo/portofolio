@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
+import { trackEvent } from "../utils/analytics";
 import { optimizedImageUrl, projectSrcSet } from "../utils/image";
 import LazyImage from "./LazyImage";
 
@@ -16,8 +17,9 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
   const openDetail = useCallback(() => {
     if (!detailPath) return;
     try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+    trackEvent('project_click', { title: Title });
     navigate(detailPath);
-  }, [navigate, detailPath]);
+  }, [navigate, detailPath, Title]);
 
   const onKeyDown = useCallback((e) => {
     if (!detailPath) return;

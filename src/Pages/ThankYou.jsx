@@ -1,9 +1,14 @@
 import { CheckCircle } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 
 const ThankYouPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <Helmet>
+        <title>Thank You — Niko Dwicahyo Widiyanto</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="text-center">
         <div className="flex justify-center mb-6">
           <CheckCircle className="w-16 h-16 text-primary" />

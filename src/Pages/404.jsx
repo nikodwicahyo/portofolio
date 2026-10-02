@@ -1,8 +1,15 @@
-import { Home, ArrowLeft } from 'lucide-react';
+import { Home, ArrowLeft, Briefcase } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
+  const goBack = () => {
+    // Direct entry has no history — fall back to home instead of a dead button.
+    try {
+      if (window.history.length > 1) navigate(-1);
+      else navigate('/');
+    } catch { navigate('/'); }
+  };
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <div className="text-center">
@@ -16,13 +23,13 @@ export default function NotFoundPage() {
             Page Not Found
           </h2>
           <p className="text-lg text-secondary max-w-md mx-auto leading-relaxed">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved. Explore my work or head back home.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="flex items-center gap-2 px-6 py-3 bg-soft border border-edge text-primary rounded-xl hover:bg-soft-strong transition-all duration-300 text-sm"
           >
             <ArrowLeft size={20} />
@@ -36,6 +43,14 @@ export default function NotFoundPage() {
             <Home size={20} />
             Home
           </Link>
+
+          <a
+            href="/#Portofolio"
+            className="flex items-center gap-2 px-6 py-3 bg-soft border border-edge text-primary rounded-xl hover:bg-soft-strong transition-all duration-300 text-sm"
+          >
+            <Briefcase size={20} />
+            My Experiences
+          </a>
         </div>
       </div>
     </div>

@@ -61,15 +61,6 @@ export function storagePathFromUrl(publicUrl) {
   }
 }
 
-export async function uploadImage(bucket, path, file) {
-  const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured.');
-  const { error } = await sb.storage.from(bucket).upload(path, file, { upsert: false });
-  if (error) throw error;
-  const { data } = sb.storage.from(bucket).getPublicUrl(path);
-  return data?.publicUrl || '';
-}
-
 export async function removeImage(bucket, publicUrl) {
   const p = storagePathFromUrl(publicUrl);
   if (!p) return;

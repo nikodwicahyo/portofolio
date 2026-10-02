@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test": "node scripts/pdfThumbStore.test.mjs",
+    "check-links": "node scripts/check-links.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getSupabase } from "../../supabase";
-import { validateImageFile, storagePathFromUrl } from "../../services/storage.js";
+import { validatePdfFile, hasPdfMagic, storagePathFromUrl } from "../../services/storage.js";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { isBase64DataUrl } from "../../utils/fileType";
 import { FileText, Upload, Trash2, Plus, Eye } from 'lucide-react'
@@ -87,14 +87,23 @@ export default function CVDocuments() {
   };
 
   const uploadCV = async () => {
-    if (!file) return;
-    const sb = getSupabase(); if (!sb) return;
-    const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
-    const validationError = isPdf
-      ? (file.size > 5 * 1024 * 1024 ? 'File too large (max 5MB).' : null)
-      : validateImageFile(file);
-    if (validationError) {
-      Swal.fire({ title: 'Invalid File', text: validationError, icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+    if (!file) {
+      Swal.fire({ title: 'No File', text: 'Select a PDF file first.', icon: 'info', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
+    const sb = getSupabase();
+    if (!sb) {
+      Swal.fire({ title: 'Failed', text: 'Supabase not configured.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
+    // ponytail: PDF-only end to end (input accept, .pdf key, PDF viewer) — reject spoofed files, not just oversized ones.
+    const pdfErr = validatePdfFile(file);
+    if (pdfErr) {
+      Swal.fire({ title: 'Invalid File', text: pdfErr, icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
+      return;
+    }
+    if (!(await hasPdfMagic(file))) {
+      Swal.fire({ title: 'Invalid File', text: 'File is not a valid PDF.', icon: 'error', confirmButtonColor: 'var(--invert)', background: 'var(--elevated)', color: 'var(--primary)' });
       return;
     }
     setUploading(true);
