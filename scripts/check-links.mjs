@@ -42,7 +42,7 @@ let failed = 0;
 const SKIP_HOST = /^(fonts\.googleapis\.com|fonts\.gstatic\.com)$/; // roots 404 by design; css2 URL is checked
 const isPlaceholder = (u) => /username|yourproject|example\.com|\$/.test(u) || /https:\/\/[a-z]$/i.test(u) || u.endsWith('https://.');
 const isPostOnly = (u) => /formly\.email\/submit/.test(u);
-const isBotWalled = (u) => /linkedin\.com/.test(u); // 999 to bots; verified manually in browser
+const isBotWalled = (u) => /linkedin\.com|instagram\.com/.test(u); // 999/429 to bots; verified manually in browser
 for (const u of [...urls].sort()) {
   if (isPlaceholder(u)) { console.log(`SKIP placeholder ${u}`); continue; }
   let host = '';
@@ -73,6 +73,7 @@ for (const u of [...urls].sort()) {
       const res2 = await fetch(u, { method: 'GET', redirect: 'follow', signal: ctrl2.signal });
       clearTimeout(t2);
       if (!res2.ok) {
+        if (res2.status === 429) { console.log(`WARN rate-limited ${res2.status} ${u}`); continue; }
         if (isBotWalled(u)) { console.log(`WARN bot-walled ${res2.status} ${u}`); continue; }
         console.error(`BROKEN ${res2.status} ${u}`); failed++; continue;
       }
