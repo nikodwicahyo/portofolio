@@ -2,15 +2,20 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    - cron: "0 4 */3 * *"
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: true
+
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Ping Supabase
         env:
@@ -21,8 +26,24 @@ jobs:
             echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY secrets are not configured."
             exit 1
           fi
-          curl -sf \
+          for i in 1 2 3; do
+            if curl -fsS --max-time 20 \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              "$SUPABASE_URL/rest/v1/projects?select=id&limit=1" \
+              > /dev/null; then
+              echo "keep-alive ok (rest, attempt $i)"
+              exit 0
+            fi
+            echo "::warning::rest ping attempt $i/3 failed, retrying..."
+            [ "$i" -lt 3 ] && sleep $((i * 10))
+          done
+          echo "::warning::rest ping failed after 3 attempts, checking auth health for diagnosis..."
+          if curl -fsS --max-time 20 \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/projects?select=id&limit=1" \
-            > /dev/null
+            "$SUPABASE_URL/auth/v1/health" \
+            > /dev/null; then
+            echo "::warning::auth is reachable but rest failed — check RLS/policies on public.projects."
+          fi
+          echo "::error::Supabase keep-alive failed after 3 attempts."
+          exit 1
