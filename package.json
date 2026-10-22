@@ -19,7 +19,7 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.6",
-    "@mui/material": "^6.1.6",
+    "@mui/material": "^9.5.0",
     "@supabase/supabase-js": "^2.49.9",
     "aos": "^2.3.4",
     "axios": "^1.10.0",
