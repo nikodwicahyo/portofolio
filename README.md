@@ -329,6 +329,18 @@ Then run `supabase/migrations/20261023_api_hardening.sql`: it revokes anonymous
 `SELECT` on `storage.objects` (public URLs keep working, anonymous bucket listing
 stops) and restricts public project reads to `is_published` rows.
 
+Finally run `supabase/migrations/20261024_privacy_retention.sql`: it prunes
+`comment_rate_limits` after 24h and `portfolio_events` after 30 days (both on
+write, no pg_cron), extends the storage-listing lockdown to signed-in non-admins
+(previously `anon` only), and sets per-bucket size / MIME limits so the
+attacker-controlled `file.type` and `file.size` are enforced by Storage itself.
+
+Then run `supabase/migrations/20261025_comment_markup.sql`: comments are plain
+text, and it adds a `comment_no_markup` CHECK so the table itself refuses
+tag-like content and `javascript:` / `data:` URLs — even for `service_role` or
+any future write path that skips the shared filter in
+`supabase/functions/submit-comment/rules.mjs`.
+
 Comments are written only by the edge function, so the database does not need an
 `anon` INSERT policy; do not add one back.
 
@@ -338,12 +350,31 @@ The comment form posts to the `submit-comment` edge function and has no direct-i
 fallback, so comments fail until it is deployed:
 
 ```bash
+supabase secrets set COMMENT_HASH_SALT="$(openssl rand -hex 32)"   # recommended
+# optional — enables the CAPTCHA. Pair with VITE_TURNSTILE_SITE_KEY or every
+# comment will be rejected:
+# supabase secrets set TURNSTILE_SECRET=<cloudflare-turnstile-secret>
 supabase functions deploy submit-comment
 ```
+
+`COMMENT_HASH_SALT` peppers the hashed IP in `comment_rate_limits`. Without it
+the function falls back to the service-role key as the pepper (still secret, but
+rotating it resets every rate-limit bucket). Rotating `COMMENT_HASH_SALT` is the
+intended way to invalidate all stored buckets.
+
+`TURNSTILE_SECRET` is the only control that stops a scripted sender from
+spoofing `X-Forwarded-For` to mint fresh rate-limit buckets. Without it the
+per-IP limit is best-effort and the DB-level 30/min global cap is the backstop
+(which also means one attacker can briefly block everyone).
 
 `verify_jwt` is false for this function (`supabase/config.toml`) because the browser
 preflight is unauthenticated; the rate limit, length caps and input filter live inside
 the function, and the database no longer accepts client inserts.
+
+The comment rules — length caps, tag/markup rejection, link cap — live once in
+`supabase/functions/submit-comment/rules.mjs`. The edge function, the browser form
+and the DB constraint in `20261025_comment_markup.sql` all enforce that one
+definition; `npm test` covers it. Do not re-add a hand-copied regex anywhere.
 
 ### 4d. Close signups
 
@@ -355,7 +386,11 @@ serving and the signup toggle:
 
 ```bash
 npm run check-api
+npm run check-api -- --xff   # also probes the X-Forwarded-For rate-limit assumption
 ```
+
+`--xff` creates one comment when the per-IP limit works (the id is printed so you
+can delete it), which is why it is opt-in.
 
 ### 5. Enable Realtime (Comments)
 

@@ -13,11 +13,13 @@ node_modules
 dist/
 *.dist
 
+# Supabase CLI scratch state
+supabase/.temp/
+
 .PresenceWidget.jsx
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/*!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo

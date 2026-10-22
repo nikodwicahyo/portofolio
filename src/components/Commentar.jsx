@@ -3,8 +3,63 @@ import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'luc
 import { getSupabase } from '../supabase';
 import { formatDateFull } from '../utils/format.js';
 import { submitComment } from '../utils/submitComment.js';
+import { MAX_BODY, MAX_NAME } from '../../supabase/functions/submit-comment/rules.mjs';
 import { trustedStorageImageUrl } from '../utils/image.js';
 
+
+// Optional Turnstile widget. Enabled by setting VITE_TURNSTILE_SITE_KEY here and
+// TURNSTILE_SECRET on the function; with neither set the form stays as-is (the
+// function's global flood guard is then the only DoS control). Public test key
+// "1x00000000000000000000AA" always passes.
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+let turnstileScript;
+
+function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!turnstileScript) {
+        turnstileScript = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            s.async = true;
+            s.defer = true;
+            s.onload = () => resolve(window.turnstile);
+            s.onerror = () => reject(new Error('Verification script failed to load.'));
+            document.head.appendChild(s);
+        });
+    }
+    return turnstileScript;
+}
+
+const Turnstile = memo(({ onToken, resetKey }) => {
+    const boxRef = useRef(null);
+
+    useEffect(() => {
+        if (!TURNSTILE_SITE_KEY) return undefined;
+        let widget;
+        let alive = true;
+        loadTurnstile()
+            .then((t) => {
+                if (!alive || !t || !boxRef.current) return;
+                widget = t.render(boxRef.current, {
+                    sitekey: TURNSTILE_SITE_KEY,
+                    callback: (token) => onToken(token),
+                    'expired-callback': () => onToken(''),
+                    'error-callback': () => onToken(''),
+                });
+            })
+            .catch(() => onToken(''));
+        return () => {
+            alive = false;
+            if (widget != null && window.turnstile) {
+                try { window.turnstile.remove(widget); } catch { /* already gone */ }
+            }
+        };
+    }, [onToken, resetKey]);
+
+    if (!TURNSTILE_SITE_KEY) return null;
+    return <div ref={boxRef} className="flex justify-center" />;
+});
+Turnstile.displayName = "Turnstile";
 
 const Comment = memo(({ comment, formatDate, isPinned = false }) => {
     const avatar = trustedStorageImageUrl(comment.profile_image);
@@ -65,7 +120,11 @@ Comment.displayName = "Comment";
 const CommentForm = memo(({ onSubmit, isSubmitting }) => {
     const [newComment, setNewComment] = useState('');
     const [userName, setUserName] = useState('');
+    const [captchaToken, setCaptchaToken] = useState('');
+    const [captchaReset, setCaptchaReset] = useState(0);
     const textareaRef = useRef(null);
+    const needsCaptcha = Boolean(TURNSTILE_SITE_KEY);
+    const handleToken = useCallback((token) => setCaptchaToken(token || ''), []);
 
     const handleTextareaChange = useCallback((e) => {
         setNewComment(e.target.value);
@@ -78,12 +137,16 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
     const handleSubmit = useCallback((e) => {
         e.preventDefault();
         if (!newComment.trim() || !userName.trim()) return;
+        if (needsCaptcha && !captchaToken) return;
         
-        onSubmit({ newComment, userName });
+        onSubmit({ newComment, userName, captchaToken });
         setNewComment('');
         setUserName('');
+        // The token is single-use: force a fresh widget for the next attempt.
+        setCaptchaToken('');
+        setCaptchaReset((n) => n + 1);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    }, [newComment, userName, onSubmit]);
+    }, [newComment, userName, onSubmit, captchaToken, needsCaptcha]);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -95,7 +158,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                     maxLength={15}
+                     maxLength={MAX_NAME}
                     placeholder="Enter your name"
                     className="w-full p-3 rounded-xl bg-soft border border-edge text-primary placeholder-muted focus:outline-none focus:border-edge-strong focus:ring-2 focus:ring-edge-strong transition-all"
                     required
@@ -109,7 +172,7 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
                 <textarea
                     ref={textareaRef}
                     value={newComment}
-                     maxLength={200}
+                     maxLength={MAX_BODY}
 
                     onChange={handleTextareaChange}
                     placeholder="Write your message here..."
@@ -118,9 +181,14 @@ const CommentForm = memo(({ onSubmit, isSubmitting }) => {
                 />
             </div>
 
+            <Turnstile onToken={handleToken} resetKey={captchaReset} />
+            {needsCaptcha && !captchaToken && (
+                <p className="text-xs text-secondary text-center">Complete the verification above to post.</p>
+            )}
+
             <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (needsCaptcha && !captchaToken)}
                 data-aos="fade-up" data-aos-duration="1000"
                 className="relative w-full h-12 bg-invert text-invert-text rounded-xl font-medium overflow-hidden group transition-all duration-300 hover:bg-invert-hover active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
@@ -206,13 +274,13 @@ const Komentar = () => {
         };
     }, [fetchAllComments]);
 
-    const handleCommentSubmit = useCallback(async ({ newComment, userName }) => {
+    const handleCommentSubmit = useCallback(async ({ newComment, userName, captchaToken }) => {
         if (isSubmitting) return;
         setError('');
         setIsSubmitting(true);
         
         try {
-            await submitComment({ userName, content: newComment });
+            await submitComment({ userName, content: newComment, turnstileToken: captchaToken });
         } catch (error) {
             setError(error?.message || 'Failed to post comment. Please try again.');
             console.error('Error adding comment: ', error);

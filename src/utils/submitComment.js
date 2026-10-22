@@ -1,20 +1,15 @@
 // Public comment intake. All writes go through the submit-comment edge
-// function: it owns the rate limit, length caps and markup filter, and the
-// portfolio_comments table no longer grants INSERT to anon (see
+// function: it owns the rate limit, length caps, CAPTCHA and markup filter, and
+// the portfolio_comments table no longer grants INSERT to anon (see
 // supabase/migrations/20261022_security_hardening.sql). Do not re-add a direct
 // insert "fallback" — that is the bypass the policy used to allow.
-export async function submitComment({ userName, content }) {
-  const name = String(userName ?? '').trim();
-  const body = String(content ?? '').trim();
+import { checkComment } from '../../supabase/functions/submit-comment/rules.mjs';
 
-  if (!name || !body) throw new Error('Please enter your name and message.');
-  if (name.length > 15) throw new Error('Name must be 15 characters or fewer.');
-  if (body.length > 200) throw new Error('Message must be 200 characters or fewer.');
-  // Mirror the server guard so users get instant feedback without a round-trip.
-  const links = (body.match(/https?:\/\//gi) || []).length;
-  if (/<script|javascript:|data:/i.test(body) || links > 2) {
-    throw new Error('Links and markup are not allowed in comments.');
-  }
+export async function submitComment({ userName, content, turnstileToken }) {
+  // Same rules module the edge function uses, so users get instant feedback and
+  // the client mirror can never drift from what the server will accept.
+  const { name, body, error } = checkComment({ userName, content });
+  if (error) throw new Error(error);
   // ponytail: 1 comment per 30s per browser, mirrors server WINDOW_SECONDS.
   try {
     const last = Number(localStorage.getItem('comment_last_at') || 0);
@@ -27,6 +22,9 @@ export async function submitComment({ userName, content }) {
     throw new Error('Commenting is unavailable right now. Please try again later.');
   }
 
+  const payload = { userName: name, content: body };
+  if (turnstileToken) payload.turnstileToken = turnstileToken;
+
   let res;
   try {
     res = await fetch(`${baseUrl}/functions/v1/submit-comment`, {
@@ -36,7 +34,7 @@ export async function submitComment({ userName, content }) {
         apikey: anonKey,
         Authorization: `Bearer ${anonKey}`,
       },
-      body: JSON.stringify({ userName: name, content: body }),
+      body: JSON.stringify(payload),
     });
   } catch {
     throw new Error('Could not reach the comment service. Please try again.');
