@@ -140,7 +140,6 @@ function App() {
   useEffect(() => {
     if (!showWelcome) {
       try { sessionStorage.setItem("welcomeShown", "1"); } catch { /* best-effort */ }
-      prefetchPortfolioData();
     }
   }, [showWelcome]);
 

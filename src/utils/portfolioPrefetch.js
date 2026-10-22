@@ -44,30 +44,44 @@ function save(meta, data) {
   }
 }
 
+// Two call sites (App idle + welcome-close) used to fire the same four queries
+// concurrently: isFresh() only sees persisted cache. One promise per table.
+const inflight = new Map();
+
+async function fetchTable(sb, meta) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    let q = sb.from(meta.key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
+    if (typeof q.abortSignal === 'function') q = q.abortSignal(ctrl.signal);
+    const { data, error } = await q;
+    if (!error && data) {
+      save(meta, data);
+      // Prime transform probe with the first row image (off critical path).
+      if ((meta.key === 'projects' || meta.key === 'certificates') && data[0]?.img) {
+        try { primeImagePipeline(data[0].img); } catch { /* best-effort */ }
+      }
+    }
+  } catch (e) {
+    if (e?.name !== 'AbortError') console.error(`[prefetch:${meta.key}]`, e?.message || e);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function prefetchPortfolioData() {
   const sb = getSupabase();
   if (!sb) return;
   // Parallel with per-table timeout; AbortSignal is actually wired now.
   await Promise.allSettled(
-    TAB_META.filter((m) => !isFresh(m)).map(async (meta) => {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 10000);
-      try {
-        let q = sb.from(meta.key).select(meta.select).order(meta.order.field, { ascending: meta.order.asc });
-        if (typeof q.abortSignal === 'function') q = q.abortSignal(ctrl.signal);
-        const { data, error } = await q;
-        if (!error && data) {
-          save(meta, data);
-          // Prime transform probe with the first row image (off critical path).
-          if ((meta.key === 'projects' || meta.key === 'certificates') && data[0]?.img) {
-            try { primeImagePipeline(data[0].img); } catch { /* best-effort */ }
-          }
-        }
-      } catch (e) {
-        if (e?.name !== 'AbortError') console.error(`[prefetch:${meta.key}]`, e?.message || e);
-      } finally {
-        clearTimeout(timer);
-      }
+    TAB_META.filter((m) => !isFresh(m)).map((meta) => {
+      const pending = inflight.get(meta.key);
+      if (pending) return pending;
+      const p = fetchTable(sb, meta);
+      inflight.set(meta.key, p);
+      const done = () => inflight.delete(meta.key);
+      p.then(done, done);
+      return p;
     })
   );
 }
