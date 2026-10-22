@@ -172,9 +172,9 @@ ON public.certificates FOR SELECT USING (true);
 CREATE POLICY "public read comments"
 ON public.portfolio_comments FOR SELECT USING (true);
 
-CREATE POLICY "public insert comment"
-ON public.portfolio_comments FOR INSERT
-WITH CHECK (is_pinned = false);
+-- Comments are written only by the submit-comment edge function (service_role).
+-- Do NOT add an anon INSERT policy: it bypasses the rate limit, length caps and
+-- server timestamp. See supabase/migrations/20261022_security_hardening.sql.
 
 CREATE POLICY "public read experiences"
 ON public.experiences FOR SELECT USING (true);
@@ -318,6 +318,25 @@ showcase columns (`projects.slug/impact`, `experiences.employment_type/skills`,
 `certificates.issuer/issued_at/verify_url`).
 Then run `supabase/migrations/20261003_experience_logos.sql` for the
 `experience-logos` bucket policies (dashboard logo uploads are denied without them).
+
+Finally run `supabase/migrations/20261022_security_hardening.sql` — **after** deploying
+the function in 4c, otherwise comments fail in between. It removes the anon INSERT path
+on `portfolio_comments` (the only writer is the submit-comment function), pins
+server-owned columns, adds DB-level length/flood guards, and makes `profiles.role`
+read-only for clients. Re-run it after any schema reset.
+
+### 4c. Deploy the comment function (required)
+
+The comment form posts to the `submit-comment` edge function and has no direct-insert
+fallback, so comments fail until it is deployed:
+
+```bash
+supabase functions deploy submit-comment
+```
+
+`verify_jwt` is false for this function (`supabase/config.toml`) because the browser
+preflight is unauthenticated; the rate limit, length caps and input filter live inside
+the function, and the database no longer accepts client inserts.
 
 ### 5. Enable Realtime (Comments)
 

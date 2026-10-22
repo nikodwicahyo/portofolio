@@ -3,9 +3,12 @@ import { MessageCircle, UserCircle2, Loader2, AlertCircle, Send, Pin } from 'luc
 import { getSupabase } from '../supabase';
 import { formatDateFull } from '../utils/format.js';
 import { submitComment } from '../utils/submitComment.js';
+import { trustedStorageImageUrl } from '../utils/image.js';
 
 
-const Comment = memo(({ comment, formatDate, isPinned = false }) => (
+const Comment = memo(({ comment, formatDate, isPinned = false }) => {
+    const avatar = trustedStorageImageUrl(comment.profile_image);
+    return (
     <div 
         className={`px-4 pt-4 pb-2 rounded-xl border transition-all group hover:-translate-y-0.5 ${
             isPinned 
@@ -20,9 +23,9 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
             </div>
         )}
         <div className="flex items-start gap-3">
-            {comment.profile_image ? (
+            {avatar ? (
                 <img
-                    src={comment.profile_image}
+                    src={avatar}
                     alt={`${comment.user_name}'s profile`}
                     className={`w-10 h-10 rounded-full object-cover border-2 flex-shrink-0  ${
                         isPinned ? 'border-edge-strong' : 'border-edge-strong'
@@ -55,7 +58,8 @@ const Comment = memo(({ comment, formatDate, isPinned = false }) => (
             </div>
         </div>
     </div>
-));
+    );
+});
 Comment.displayName = "Comment";
 
 const CommentForm = memo(({ onSubmit, isSubmitting }) => {

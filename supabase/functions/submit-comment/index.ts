@@ -1,7 +1,8 @@
 // Edge Function: submit-comment — rate-limited public comment intake.
 // Deploy: supabase functions deploy submit-comment
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (set automatically).
-// Client: src/utils/submitComment.js (falls back to direct insert if 404).
+// Client: src/utils/submitComment.js (the only write path — there is no direct
+// insert fallback, and the table no longer grants INSERT to clients).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -28,6 +29,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
 
+  // Reject oversized bodies before buffering them (JSON payload is ~250 bytes max).
+  const declaredLength = Number(req.headers.get('content-length') || 0);
+  if (declaredLength > 4096) return json(413, { error: 'Payload too large.' });
+
   let payload: { userName?: unknown; user_name?: unknown; content?: unknown };
   try {
     payload = await req.json();
@@ -46,8 +51,11 @@ Deno.serve(async (req) => {
     return json(400, { error: 'Links and markup are not allowed in comments.' });
   }
 
-  const fwd = req.headers.get('x-forwarded-for') || '';
-  const ip = fwd.split(',')[0].trim() || 'unknown';
+  // Trust the nearest (last) hop, not the first: the first value is whatever the
+  // client sent, so `X-Forwarded-For: 1.2.3.4` would mint a fresh rate-limit
+  // bucket per request. The edge proxy appends the address it actually saw last.
+  const fwd = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
+  const ip = fwd.split(',').map((s) => s.trim()).filter(Boolean).pop() || 'unknown';
   const ipHash = await sha256Hex(`comment-v1::${ip}`);
 
   const sb = createClient(
@@ -81,6 +89,11 @@ Deno.serve(async (req) => {
     .select('id')
     .single();
   if (iErr) {
+    // DB-level flood guard (portfolio_comments_before_insert) is the backstop
+    // when the per-IP ledger is bypassed; surface it as a normal rate limit.
+    if (/comment_flood/i.test(iErr.message || '')) {
+      return json(429, { error: 'Too many comments. Please try again later.' });
+    }
     console.error('[submit-comment] insert failed:', iErr.message);
     return json(500, { error: 'Could not save your comment.' });
   }

@@ -1,5 +1,8 @@
-import { getSupabase } from '../supabase.js';
-
+// Public comment intake. All writes go through the submit-comment edge
+// function: it owns the rate limit, length caps and markup filter, and the
+// portfolio_comments table no longer grants INSERT to anon (see
+// supabase/migrations/20261022_security_hardening.sql). Do not re-add a direct
+// insert "fallback" — that is the bypass the policy used to allow.
 export async function submitComment({ userName, content }) {
   const name = String(userName ?? '').trim();
   const body = String(content ?? '').trim();
@@ -7,7 +10,7 @@ export async function submitComment({ userName, content }) {
   if (!name || !body) throw new Error('Please enter your name and message.');
   if (name.length > 15) throw new Error('Name must be 15 characters or fewer.');
   if (body.length > 200) throw new Error('Message must be 200 characters or fewer.');
-  // Mirror server spam guard so users get instant feedback without a round-trip.
+  // Mirror the server guard so users get instant feedback without a round-trip.
   const links = (body.match(/https?:\/\//gi) || []).length;
   if (/<script|javascript:|data:/i.test(body) || links > 2) {
     throw new Error('Links and markup are not allowed in comments.');
@@ -18,56 +21,39 @@ export async function submitComment({ userName, content }) {
     if (Date.now() - last < 30 * 1000) throw new Error('You are commenting too fast. Please wait a bit.');
   } catch (e) { if (e?.message?.includes('too fast')) throw e; }
 
-  // ponytail: canonical contract is camelCase; snake_case kept for legacy callers.
-  const payload = { userName: name, user_name: name, content: body, is_pinned: false };
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  const fallbackInsert = async () => {
-    const sb = getSupabase();
-    if (!sb) throw new Error('Failed to post comment. Please try again.');
-    const { error } = await sb.from('portfolio_comments').insert([
-      { content: body, user_name: name, is_pinned: false, created_at: new Date().toISOString() },
-    ]);
-    if (error) throw new Error('Failed to post comment. Please try again.');
-    try { localStorage.setItem('comment_last_at', String(Date.now())); } catch { /* best-effort */ }
-  };
-
-  if (!baseUrl) {
-    console.warn('submit-comment function URL unconfigured, falling back to direct insert.');
-    return fallbackInsert();
+  if (!baseUrl || !anonKey) {
+    throw new Error('Commenting is unavailable right now. Please try again later.');
   }
 
+  let res;
   try {
-    const res = await fetch(`${baseUrl}/functions/v1/submit-comment`, {
+    res = await fetch(`${baseUrl}/functions/v1/submit-comment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         apikey: anonKey,
         Authorization: `Bearer ${anonKey}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ userName: name, content: body }),
     });
-    if (!res.ok) {
-      if (res.status === 429) throw new Error('You are commenting too fast. Please wait a bit.');
-      let message = '';
-      try {
-        const data = await res.json();
-        message = data?.error || data?.message || '';
-      } catch {
-        // ignore parse errors, use fallback message below
-      }
-      throw new Error(message || 'Failed to post comment. Please try again.');
-    }
-    return res.json().catch(() => undefined).then((out) => {
-      try { localStorage.setItem('comment_last_at', String(Date.now())); } catch { /* best-effort */ }
-      return out;
-    });
-  } catch (err) {
-    if (err instanceof TypeError) {
-      console.warn('submit-comment function unavailable, falling back to direct insert.', err);
-      return fallbackInsert();
-    }
-    throw err;
+  } catch {
+    throw new Error('Could not reach the comment service. Please try again.');
   }
+
+  if (!res.ok) {
+    if (res.status === 429) throw new Error('You are commenting too fast. Please wait a bit.');
+    let message = '';
+    try {
+      const data = await res.json();
+      message = data?.error || data?.message || '';
+    } catch {
+      // non-JSON body; use the generic message below
+    }
+    throw new Error(message || 'Failed to post comment. Please try again.');
+  }
+
+  try { localStorage.setItem('comment_last_at', String(Date.now())); } catch { /* best-effort */ }
+  return res.json().catch(() => undefined);
 }

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node scripts/pdfThumbStore.test.mjs",
+    "test": "node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs",
     "check-links": "node scripts/check-links.mjs",
     "preview": "vite preview"
   },
@@ -21,12 +21,12 @@
     "axios": "^1.10.0",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.454.0",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.4.299",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.76.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^7.18.4",
     "sweetalert2": "^11.15.0"
   },
   "devDependencies": {

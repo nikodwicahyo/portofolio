@@ -93,7 +93,7 @@ const ContactPage = () => {
       Swal.fire({
         title: 'Failed!',
         // Fallback: never lose a lead when the provider is down.
-        html: `<p>${message}</p><p class="mt-2">Or email me directly at <a href="mailto:${CONTACT_EMAIL}" style="text-decoration:underline">${CONTACT_EMAIL}</a></p>`,
+        text: `${message}\n\nOr email me directly at ${CONTACT_EMAIL}`,
         icon: 'error',
         confirmButtonColor: 'var(--invert)',
         background: 'var(--elevated)',

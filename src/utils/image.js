@@ -104,6 +104,19 @@ export function fullHdUrl(url) {
   return kept ? `${orig}?${kept}` : orig;
 }
 
+// Comment avatars come from user-written rows. Only render images served from
+// our own storage: a stale or forged row must not turn every page view into a
+// request to a third-party server that harvests visitor IPs.
+export function trustedStorageImageUrl(url, base = import.meta.env?.VITE_SUPABASE_URL) {
+  if (!url || typeof url !== 'string' || !base) return null;
+  try {
+    const u = new URL(url);
+    return u.origin === new URL(base).origin && u.pathname.includes('/storage/v1/') ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 // Runtime preconnect to the Supabase storage origin (env-specific, so it
 // can't be hardcoded in index.html). Call once per origin — no-op afterwards.
 const preconnected = new Set();

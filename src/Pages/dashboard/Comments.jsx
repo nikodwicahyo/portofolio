@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getSupabase } from "../../supabase";
 import { notifyPortfolioChanged } from "../../utils/realtimeSync";
 import { highlightParts, formatDateFull } from "../../utils/format.js";
+import { trustedStorageImageUrl } from "../../utils/image";
 import {
   MessageSquare,
   Pin,
@@ -255,7 +256,7 @@ export default function Comments() {
                   {/* Avatar */}
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-soft-strong border border-edge flex items-center justify-center shrink-0">
                     <img
-                      src={comment.profile_image || "/default-avatar.jpg"}
+                      src={trustedStorageImageUrl(comment.profile_image) || "/default-avatar.jpg"}
                       alt="Avatar"
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover"
                     />
