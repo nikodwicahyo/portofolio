@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "test": "node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs",
     "check-links": "node scripts/check-links.mjs",
+    "check-api": "node scripts/check-api-hardening.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

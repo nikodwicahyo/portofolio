@@ -1,3 +1,13 @@
+# Signups are closed: the only accounts are admins created from the dashboard.
+# Set the same toggle on the hosted project (Authentication -> Providers ->
+# Email -> "Allow new users to sign up" off); config.toml only drives local dev
+# and `supabase config push`.
+[auth]
+enable_signup = false
+
+[auth.email]
+enable_signup = false
+
 # ponytail: verify_jwt=false because the Supabase gateway rejects the
 # browser's auth-less OPTIONS preflight before it reaches the function,
 # which surfaces as a CORS error. submit-comment is public + rate-limited

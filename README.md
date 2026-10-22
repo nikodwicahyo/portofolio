@@ -37,7 +37,7 @@ Personal portfolio website built with React and Supabase, featuring a public-fac
 
 ### Prerequisites
 
-- Node.js `>= 18.x`
+- Node.js `>= 22.x` (required by `pdfjs-dist@6`)
 - npm or yarn
 
 ### 1. Clone & Install
@@ -325,6 +325,13 @@ on `portfolio_comments` (the only writer is the submit-comment function), pins
 server-owned columns, adds DB-level length/flood guards, and makes `profiles.role`
 read-only for clients. Re-run it after any schema reset.
 
+Then run `supabase/migrations/20261023_api_hardening.sql`: it revokes anonymous
+`SELECT` on `storage.objects` (public URLs keep working, anonymous bucket listing
+stops) and restricts public project reads to `is_published` rows.
+
+Comments are written only by the edge function, so the database does not need an
+`anon` INSERT policy; do not add one back.
+
 ### 4c. Deploy the comment function (required)
 
 The comment form posts to the `submit-comment` edge function and has no direct-insert
@@ -337,6 +344,18 @@ supabase functions deploy submit-comment
 `verify_jwt` is false for this function (`supabase/config.toml`) because the browser
 preflight is unauthenticated; the rate limit, length caps and input filter live inside
 the function, and the database no longer accepts client inserts.
+
+### 4d. Close signups
+
+The site has no signup UI; the only accounts are admins created manually. In
+**Authentication → Providers → Email**, disable "Allow new users to sign up"
+(`supabase/config.toml` already sets it for local dev). Then verify the whole
+anonymous surface — comment writes, internal tables, storage listing, public file
+serving and the signup toggle:
+
+```bash
+npm run check-api
+```
 
 ### 5. Enable Realtime (Comments)
 

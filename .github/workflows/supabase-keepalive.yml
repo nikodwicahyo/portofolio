@@ -47,3 +47,24 @@ jobs:
           fi
           echo "::error::Supabase keep-alive failed after 3 attempts."
           exit 1
+
+      - name: Comment volume check (24h)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          since=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          headers=$(curl -fsS -D - -o /dev/null --max-time 20 \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Prefer: count=exact" \
+            -H "Range: 0-0" \
+            "$SUPABASE_URL/rest/v1/portfolio_comments?select=id&created_at=gte.$since" || true)
+          count=$(printf '%s' "$headers" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Rr]ange:.*\///p' | tail -n 1)
+          echo "comments in last 24h: ${count:-unknown}"
+          # 30/day is far above real traffic for this site. A failure emails the
+          # repo owner via GitHub's scheduled-workflow notification.
+          if [ -n "$count" ] && [ "$count" -gt 30 ] 2>/dev/null; then
+            echo "::error::$count comments in the last 24h — possible spam flood. Review public.portfolio_comments."
+            exit 1
+          fi
