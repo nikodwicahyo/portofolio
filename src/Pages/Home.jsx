@@ -214,7 +214,7 @@ const Home = () => {
                 <div className="relative w-full opacity-90">
                   <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
                     <LazyImage
-                      src="Animation2.gif"
+                      src="Animation.mp4"
                       alt="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
                       decoding="async"
                       className={`w-full h-full object-contain transition-all duration-500 ${
