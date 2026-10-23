@@ -161,6 +161,9 @@ const ContactPage = () => {
                 <User className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
+                  id="contact-name"
+                  aria-label="Your Name"
+                  autoComplete="name"
                   placeholder="Your Name"
                   maxLength={100}
                   {...register('name', { required: 'Name is required' })}
@@ -179,6 +182,9 @@ const ContactPage = () => {
                 <Mail className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <input
                   type="email"
+                  id="contact-email"
+                  aria-label="Your Email"
+                  autoComplete="email"
                   placeholder="Your Email"
                   {...register('email', {
                     required: 'Email is required',
@@ -201,6 +207,8 @@ const ContactPage = () => {
               >
                 <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-muted group-focus-within:text-primary transition-colors" />
                 <textarea
+                  id="contact-message"
+                  aria-label="Your Message"
                   placeholder="Your Message"
                   maxLength={2000}
                   {...register('message', {

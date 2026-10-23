@@ -47,6 +47,8 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
               fallbackSrc={Img}
               sizes={CARD_SIZES}
               alt={Title}
+              width={960}
+              height={540}
               aspectRatio="16/9"
               className="w-full h-full object-cover aspect-[16/9] transform group-hover:scale-[1.03] transition-transform duration-500"
               wrapperClassName="bg-soft"

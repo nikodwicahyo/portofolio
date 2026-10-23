@@ -1,6 +1,5 @@
 import { getSupabase } from "../supabase";
 import { TABS, tabCacheKey, PROJECTS_CACHE_KEY } from "../services/portfolio";
-import { primeImagePipeline } from "./image";
 
 export { PROJECTS_CACHE_KEY };
 
@@ -57,10 +56,6 @@ async function fetchTable(sb, meta) {
     const { data, error } = await q;
     if (!error && data) {
       save(meta, data);
-      // Prime transform probe with the first row image (off critical path).
-      if ((meta.key === 'projects' || meta.key === 'certificates') && data[0]?.img) {
-        try { primeImagePipeline(data[0].img); } catch { /* best-effort */ }
-      }
     }
   } catch (e) {
     if (e?.name !== 'AbortError') console.error(`[prefetch:${meta.key}]`, e?.message || e);

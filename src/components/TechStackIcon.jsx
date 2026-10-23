@@ -11,6 +11,8 @@ const TechStackIcon = memo(({ TechStackIcon, Language }) => {
         fallbackSrc={TechStackIcon}
         alt={`${Language} icon`}
         loading="lazy"
+        width={80}
+        height={80}
         className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 transform transition-transform duration-300 group-hover:scale-110"
       />
       <span className="text-primary font-medium text-xs sm:text-sm md:text-base tracking-wide group-hover:text-primary transition-colors duration-300 text-center leading-tight">

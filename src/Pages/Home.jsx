@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram } from "lucide-react"
-import LazyImage from "../components/LazyImage"
 import { goToPortfolioTab } from "../services/portfolio"
 
 const StatusBadge = memo(() => (
@@ -213,10 +212,14 @@ const Home = () => {
                 data-aos-delay="600">
                 <div className="relative w-full opacity-90">
                   <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
-                    <LazyImage
-                      src="Animation.mp4"
-                      alt="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
-                      decoding="async"
+                    <video
+                      src="/Animation.mp4"
+                      aria-label="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="metadata"
                       className={`w-full h-full object-contain transition-all duration-500 ${
                         isHovering 
                           ? "scale-[95%] sm:scale-[90%] md:scale-[90%] lg:scale-[90%] rotate-2" 

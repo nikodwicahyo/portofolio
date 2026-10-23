@@ -1,12 +1,13 @@
-// Supabase image pipeline — HD + fast.
+// Supabase image pipeline — opt-in.
 //
-// Root fix: transformations only work on /storage/v1/render/image/public/.
-// The old `?width=&quality=` on /object/public/ URLs was silently ignored,
-// so cards served raw originals with no retina variants.
+// Image Transformation is a paid add-on. On projects without it,
+// /render/image/ returns 403 for every request, so transforms stay off unless
+// VITE_SUPABASE_IMAGE_TRANSFORMS=true (only after the add-on is enabled).
 // Non-Supabase (data:/blob:/external) URLs pass through untouched.
 
 const SUPABASE_PUBLIC = '/storage/v1/object/public/';
 const SUPABASE_RENDER = '/storage/v1/render/image/public/';
+const TRANSFORMS_ENABLED = import.meta.env?.VITE_SUPABASE_IMAGE_TRANSFORMS === 'true';
 
 function splitQuery(url) {
   const i = url.indexOf('?');
@@ -19,10 +20,10 @@ function isTransformed(base, query) {
 }
 
 export function optimizedImageUrl(url, { width = 960, quality = 80 } = {}) {
+  if (!TRANSFORMS_ENABLED) return url;
   if (!url || typeof url !== 'string') return url;
   if (url.startsWith('data:') || url.startsWith('blob:')) return url;
   if (!url.includes(SUPABASE_PUBLIC) && !url.includes(SUPABASE_RENDER)) return url;
-  if (transformState === -1) return url; // transforms 403 on this project → serve raw
   const [base, query] = splitQuery(url);
   if (isTransformed(base, query)) return url;
   const renderBase = base.replace(SUPABASE_PUBLIC, SUPABASE_RENDER);
@@ -33,53 +34,9 @@ export function optimizedImageUrl(url, { width = 960, quality = 80 } = {}) {
   return `${renderBase}?${sep}width=${w}&quality=${q}`;
 }
 
-// Transform capability probe — the /render/image/ endpoint 403s when Image
-// Transformation is disabled on the project (verified: raw 200, render 403).
-// First paint would otherwise burn one failed request per image before the
-// LazyImage fallback rescues it — and any fallback hiccup shows "Failed to load".
-// Prime once per session; when blocked, serve raw URLs directly (zero failures).
-const TRANSFORM_FLAG_KEY = 'img_transform_v1';
-const TRANSFORM_FLAG_TTL = 86400000;
-let transformState = 0; // 0 unknown, 1 ok, -1 blocked
-let probePromise = null;
-
-try {
-  const raw = localStorage.getItem(TRANSFORM_FLAG_KEY);
-  if (raw) {
-    const p = JSON.parse(raw);
-    if (p && Date.now() - p.ts < TRANSFORM_FLAG_TTL) transformState = p.ok ? 1 : -1;
-  }
-} catch { /* best-effort */ }
-
-function rememberTransform(ok) {
-  transformState = ok ? 1 : -1;
-  try { localStorage.setItem(TRANSFORM_FLAG_KEY, JSON.stringify({ ok, ts: Date.now() })); } catch { /* noop */ }
-}
-
-export function isTransformBlocked() {
-  return transformState === -1;
-}
-
-export function primeImagePipeline(sampleUrl) {
-  if (transformState !== 0 || probePromise || !sampleUrl || typeof sampleUrl !== 'string') return probePromise;
-  if (!sampleUrl.includes(SUPABASE_PUBLIC) || sampleUrl.startsWith('data:') || sampleUrl.startsWith('blob:')) return probePromise;
-  // PDFs pass through this bucket too — probing /render/image/ on one 400s
-  // and would flag transforms as blocked for every real image. Never probe them.
-  if (/\.pdf(\?|$)/i.test(sampleUrl)) return probePromise;
-  const testUrl = optimizedImageUrl(sampleUrl, { width: 640, quality: 70 });
-  if (testUrl === sampleUrl) return probePromise;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  probePromise = fetch(testUrl, { method: 'HEAD', signal: ctrl.signal, redirect: 'follow' })
-    .then((r) => rememberTransform(r.ok))
-    .catch(() => rememberTransform(false))
-    .finally(() => clearTimeout(timer));
-  return probePromise;
-}
 // "url640 640w, url960 960w, ..." for retina sharpness; browser picks smallest sufficient.
-// Blocked transforms → undefined (raw src already served, no stacked 403s).
 export function projectSrcSet(url, widths = [640, 960, 1280]) {
-  if (isTransformBlocked()) return undefined;
+  if (!TRANSFORMS_ENABLED) return undefined;
   if (!url || typeof url !== 'string') return undefined;
   if (url.startsWith('data:') || url.startsWith('blob:')) return undefined;
   if (!url.includes(SUPABASE_PUBLIC) && !url.includes(SUPABASE_RENDER)) return undefined;

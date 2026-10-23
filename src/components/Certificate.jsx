@@ -131,6 +131,8 @@ const Certificate = memo(({ ImgSertif }) => {
               fallbackSrc={ImgSertif}
               sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
               alt="Certificate"
+              width={960}
+              height={690}
               aspectRatio="16/11.5"
               className="certificate-image !w-full object-cover aspect-[16/11.5]"
               wrapperClassName="w-full"

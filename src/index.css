@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 400 800;
+	font-display: swap;
+	src: url("/fonts/inter-latin-var.woff2") format("woff2");
+}
+
 /* Theme tokens — dark is the implicit default, html.light overrides */
 :root {
 	--bg: #09090b;

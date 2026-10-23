@@ -4,7 +4,7 @@ import { getSupabase } from "../supabase";
 import { TABS, tabCacheKey, PORTFOLIO_TAB_EVENT } from "../services/portfolio";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 import { formatDateShort, formatDateLong } from "../utils/format";
-import { optimizedImageUrl, primeImagePipeline } from "../utils/image";
+import { optimizedImageUrl } from "../utils/image";
 
 import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
@@ -88,7 +88,7 @@ const ExperienceCard = memo(({ exp, onSelect }) => {
         <div className="flex items-start gap-3 mb-3 sm:pr-36">
           {exp.logo_url ? (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-soft ring-1 ring-edge shrink-0">
-              <LazyImage src={logo} fallbackSrc={exp.logo_url} alt={exp.company} loading="eager" decoding="async" className="w-full h-full object-cover" />
+              <LazyImage src={logo} fallbackSrc={exp.logo_url} alt={exp.company} width={192} height={192} loading="eager" decoding="async" className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-soft border border-edge flex items-center justify-center shrink-0">
@@ -151,7 +151,7 @@ const ExperienceModal = ({ experience, onClose }) => {
             <div className="flex items-start gap-3 sm:gap-4">
               {experience.logo_url ? (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-soft ring-1 ring-edge shrink-0">
-                  <LazyImage src={logo} fallbackSrc={experience.logo_url} alt={experience.company} loading="eager" className="w-full h-full object-cover" />
+                  <LazyImage src={logo} fallbackSrc={experience.logo_url} alt={experience.company} width={256} height={256} loading="eager" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-soft border border-edge flex items-center justify-center shrink-0">
@@ -500,12 +500,6 @@ export default function FullWidthTabs() {
     // ponytail: no force-all thundering fetch on mount.
     const key = TAB_META[value]?.key || TAB_META[0].key;
     fetchTab(key, 2, false);
-    // Prime transform probe from cached project image (repeat visits skip prefetch).
-    try {
-      const raw = localStorage.getItem(tabCacheKey('projects'));
-      const first = raw && JSON.parse(raw)?.data?.[0]?.img;
-      if (first) primeImagePipeline(first);
-    } catch { /* best-effort */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -514,13 +508,6 @@ export default function FullWidthTabs() {
     const tab = tabData[meta.key];
     if (tab && !tab.fetched && !tab.loading && !tab.error) fetchTab(meta.key);
   }, [value, tabData, fetchTab]);
-
-  // Certificates tab may be image-only (no projects cache to prime from):
-  // probe the transform pipeline as soon as its data lands, so image cards
-  // mount with the right URL strategy instead of failing first then retrying.
-  useEffect(() => {
-    if (certificates[0]?.img) primeImagePipeline(certificates[0].img);
-  }, [certificates]);
 
   useEffect(() => {
     return onPortfolioDataUpdated((table) => {
