@@ -634,7 +634,7 @@ export default function FullWidthTabs() {
   );
 
   return (
-    <div className="md:px-[10%] px-[5%] w-full sm:mt-0 mt-[3rem] bg-bg overflow-hidden scroll-mt-16" id="Portofolio">
+    <div className="md:px-[10%] px-[5%] w-full sm:mt-0 mt-[3rem] bg-bg overflow-hidden scroll-mt-16">
       <div className="text-center pb-6 sm:pb-10" data-aos="fade-up" data-aos-duration="1000">
         <h2 className="inline-block text-2xl sm:text-3xl md:text-5xl font-bold text-center mx-auto text-primary">
           Portfolio Showcase

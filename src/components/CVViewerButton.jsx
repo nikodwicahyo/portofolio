@@ -1,8 +1,9 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { getSupabase } from "../supabase";
-import { onPortfolioDataUpdated } from "../utils/realtimeSync";
 import { trackEvent } from "../utils/analytics";
 import { FileText, Loader2 } from "lucide-react";
+
+// Supabase and the realtime listener are imported on demand so neither lands in
+// the landing chunk; the section renders from cache first anyway.
 
 // Split pdf.js out of the landing chunk: viewer loads only when opened.
 const PDFViewerModal = lazy(() => import("./PDFViewerModal"));
@@ -38,18 +39,23 @@ const CVViewerButton = () => {
 
     const fetchCVMeta = async () => {
       setLoading(true);
-      const sb = getSupabase();
-      if (!sb) { applyCv(null); return; }
-      const { data } = await sb
-        .from("cv_documents")
-        .select("id,filename,created_at,updated_at")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        try { localStorage.setItem(CV_CACHE_KEY, JSON.stringify({ ...data, timestamp: Date.now() })); } catch { /* storage full */ }
+      try {
+        const { getSupabase } = await import("../supabase");
+        const sb = getSupabase();
+        if (!sb) { applyCv(null); return; }
+        const { data } = await sb
+          .from("cv_documents")
+          .select("id,filename,created_at,updated_at")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data) {
+          try { localStorage.setItem(CV_CACHE_KEY, JSON.stringify({ ...data, timestamp: Date.now() })); } catch { /* storage full */ }
+        }
+        applyCv(data || null);
+      } catch {
+        applyCv(readCvCache());
       }
-      applyCv(data || null);
     };
 
     const cached = readCvCache();
@@ -58,13 +64,19 @@ const CVViewerButton = () => {
     } else {
       fetchCVMeta();
     }
-    const unsub = onPortfolioDataUpdated((table) => {
-      if (table === "cv_documents") {
-        try { localStorage.removeItem(CV_CACHE_KEY); } catch { /* noop */ }
-        fetchCVMeta();
-      }
-    });
-    return () => { cancelled = true; unsub(); };
+    let unsub;
+    import("../utils/realtimeSync")
+      .then(({ onPortfolioDataUpdated }) => {
+        if (cancelled) return;
+        unsub = onPortfolioDataUpdated((table) => {
+          if (table === "cv_documents") {
+            try { localStorage.removeItem(CV_CACHE_KEY); } catch { /* noop */ }
+            fetchCVMeta();
+          }
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; unsub?.(); };
   }, []);
 
   const handleView = async () => {
@@ -76,17 +88,20 @@ const CVViewerButton = () => {
     // ponytail: lazy full fetch only on click; metadata cache keeps mount free
     if (cv?.id) {
       setLoading(true);
-      const sb = getSupabase();
-      if (sb) {
-        const { data } = await sb.from("cv_documents").select("id,file_data,filename,created_at").eq("id", cv.id).maybeSingle();
-        if (data?.file_data) {
-          setCv(data);
-          setLoading(false);
-          setOpenPdf(true);
-          trackEvent('cv_view');
-          return;
+      try {
+        const { getSupabase } = await import("../supabase");
+        const sb = getSupabase();
+        if (sb) {
+          const { data } = await sb.from("cv_documents").select("id,file_data,filename,created_at").eq("id", cv.id).maybeSingle();
+          if (data?.file_data) {
+            setCv(data);
+            setLoading(false);
+            setOpenPdf(true);
+            trackEvent('cv_view');
+            return;
+          }
         }
-      }
+      } catch { /* keep the button disabled instead of throwing */ }
       setLoading(false);
     }
   };

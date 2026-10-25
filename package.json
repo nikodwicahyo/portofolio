@@ -1,7 +1,7 @@
 {
   "name": "portofolio-v5",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "engines": {
     "node": ">=22.13"
@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node scripts/prefetchDedupe.test.mjs && node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs",
+    "test": "node scripts/prefetchDedupe.test.mjs && node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs && node scripts/heroVideo.test.mjs",
     "check-links": "node scripts/check-links.mjs",
     "check-api": "node scripts/check-api-hardening.mjs",
     "preview": "vite preview"

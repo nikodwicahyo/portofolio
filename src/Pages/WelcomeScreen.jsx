@@ -14,7 +14,7 @@ const TypewriterEffect = ({ text }) => {
       } else {
         clearInterval(timer);
       }
-    }, 260);
+    }, 130);
     
     return () => clearInterval(timer);
   }, [text]);
@@ -38,12 +38,15 @@ const WelcomeScreen = ({ onLoadingComplete }) => {
   const innerRef = useRef(null);
 
   useEffect(() => {
+    // Long enough for every step to finish: last AOS item at 1.2 s (+0.4 s run)
+    // and the typewriter at 11 x 130 ms = 1.4 s. Then a beat, then the 800 ms
+    // exit. Cutting this shorter truncates the animation mid-word.
     const timer = setTimeout(() => {
       setIsLoading(false);
       innerRef.current = setTimeout(() => {
         onLoadingComplete?.();
-      }, 1000);
-    }, 3400);
+      }, 800);
+    }, 2200);
     
     return () => {
       clearTimeout(timer);
@@ -80,9 +83,12 @@ const WelcomeScreen = ({ onLoadingComplete }) => {
     <AnimatePresence>
       {isLoading && (
         <motion.div
-          className="fixed inset-0 bg-bg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          // z-100 clears the z-50 navbar; no fade-in (initial={false}) so the
+          // page underneath never shows through — only the exit animates.
+          className="fixed inset-0 z-[100] bg-bg"
+          inert=""
+          aria-hidden="true"
+          initial={false}
           exit="exit"
           variants={containerVariants}
         >

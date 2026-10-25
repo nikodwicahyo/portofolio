@@ -10,6 +10,16 @@
 	src: url("/fonts/inter-latin-var.woff2") format("woff2");
 }
 
+/* Opaque MP4 fallback (WebKit drops VP9 alpha): blend its white canvas away. */
+.hero-video--fallback {
+	mix-blend-mode: multiply;
+}
+
+html:not(.light) .hero-video--fallback {
+	filter: invert(1) hue-rotate(180deg);
+	mix-blend-mode: screen;
+}
+
 /* Theme tokens — dark is the implicit default, html.light overrides */
 :root {
 	--bg: #09090b;

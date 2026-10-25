@@ -7,7 +7,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          mui: ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
           pdfjs: ['pdfjs-dist'],
           supabase: ['@supabase/supabase-js'],
           framer: ['framer-motion'],

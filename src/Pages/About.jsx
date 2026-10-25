@@ -1,11 +1,8 @@
 import { useEffect, useState, memo, useMemo } from "react"
-import { getSupabase } from "../supabase"
 import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
-import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch"
-import { goToPortfolioTab } from "../services/portfolio"
-import { onPortfolioDataUpdated } from "../utils/realtimeSync"
+import { PROJECTS_CACHE_KEY, goToPortfolioTab } from "../services/portfolio"
 
 // Memoized Components
 const Header = memo(() => (
@@ -41,10 +38,10 @@ const ProfileImage = memo(() => (
         <div className="w-72 h-72 sm:w-80 sm:h-80 rounded-full overflow-hidden border border-edge-strong shadow-2xl transform transition-all duration-700 group-hover:scale-105">
           <div className="absolute inset-0 border-4 border-edge rounded-full z-20 transition-all duration-700 group-hover:border-edge-strong group-hover:scale-105" />
           <LazyImage
-            src="/Photo.jpeg"
+            src="/photo.v1.webp"
             alt="Portrait of Niko Dwicahyo Widiyanto, Full-Stack Web Developer and AI Engineer"
-            width={1435}
-            height={1435}
+            width={640}
+            height={640}
             className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
           />
         </div>
@@ -126,15 +123,24 @@ const AboutPage = () => {
   const [countVersion, setCountVersion] = useState(0);
 
   useEffect(() => {
-    return onPortfolioDataUpdated(() => setCountVersion((v) => v + 1));
+    let unsub;
+    let cancelled = false;
+    // Dynamic so the Supabase client stays out of the landing chunk.
+    import("../utils/realtimeSync")
+      .then(({ onPortfolioDataUpdated }) => {
+        if (!cancelled) unsub = onPortfolioDataUpdated(() => setCountVersion((v) => v + 1));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; unsub?.(); };
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     const fetchCounts = async () => {
-      const sb = getSupabase();
-      if (!sb) return;
       try {
+        const { getSupabase } = await import("../supabase");
+        const sb = getSupabase();
+        if (!sb) return;
         // ponytail: counts from fresh tab caches; always keep earliest-experience query
         const cachedP = safeLen(PROJECTS_CACHE_KEY);
         const cachedC = safeLen("certificates");

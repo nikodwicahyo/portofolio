@@ -103,7 +103,7 @@ const Navbar = () => {
                             onClick={(e) => scrollToSection(e, "#Home")}
                             className="flex items-center gap-2 text-lg font-semibold text-primary"
                         >
-                            <img src="/Logo.svg" alt="Niko Dwicahyo Widiyanto logo" width={32} height={32} className="w-8 h-8 rounded-full" />
+                            <img src="/logo.v1.webp" alt="Niko Dwicahyo Widiyanto logo" width={32} height={32} className="w-8 h-8 rounded-full" />
                             Niko Dwicahyo Widiyanto
                         </a>
                     </div>

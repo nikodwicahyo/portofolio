@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -11,11 +11,7 @@ import AnimatedBackground from "./components/Background";
 import { AnimatePresence, motion } from "framer-motion";
 import Footer from "./components/Footer";
 
-import Login from "./Pages/Login";
-import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { prefetchPortfolioData, clearStaleCache } from "./utils/portfolioPrefetch";
-import { initRealtimeSync } from "./utils/realtimeSync";
 import { goAdmin } from "./utils/goAdmin";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
@@ -25,6 +21,9 @@ const WelcomeScreen = lazy(() => import("./Pages/WelcomeScreen"));
 const NotFoundPage = lazy(() => import("./Pages/404"));
 const ThankYouPage = lazy(() => import("./Pages/ThankYou"));
 const Dashboard = lazy(() => import("./Pages/Dashboard"));
+// Both touch Supabase, which is pointless to ship to the landing page.
+const Login = lazy(() => import("./Pages/Login"));
+const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 
 const pageVariants = {
   initial: { opacity: 0, y: 24 },
@@ -38,34 +37,102 @@ const PageTransition = ({ children }) => (
   </motion.div>
 );
 
-const LandingPage = ({ showWelcome, setShowWelcome }) => {
-  return (
-    <>
-      <AnimatePresence mode="wait">
-        {showWelcome && (
-          <Suspense fallback={null}>
-            <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
-          </Suspense>
-        )}
-      </AnimatePresence>
+// Mounts below-the-fold sections once they are within 400 px of the viewport,
+// which keeps the MUI/section chunks out of the first load without showing an
+// empty band: the app warms those chunks on scroll/idle (see App's `warm`), so
+// by the time this fires the section renders filled in. The placeholder borrows
+// the section's anchor id so #Portofolio links still have a target.
+const Deferred = ({ anchorId, minHeight = "50vh", children }) => {
+  const ref = useRef(null);
+  // A deep link to the section must mount it up front: the placeholder has the
+  // id, so the browser would otherwise leave the user on an empty 50vh gap.
+  const [show, setShow] = useState(
+    () => typeof window !== "undefined" && window.location.hash === `#${anchorId}`
+  );
 
-      {!showWelcome && (
-        <>
-          <Navbar />
-          <div className="pt-16">
-            <Home />
-            <About />
-            <Suspense fallback={<div className="h-20" />}>
-              <Portofolio />
-              <ContactPage />
-          </Suspense>
-          <Footer />
-          </div>
-        </>
+  useEffect(() => {
+    if (!show || window.location.hash !== `#${anchorId}`) return;
+    const el = ref.current;
+    if (!el) return;
+    // Same -100 offset the navbar uses, so the heading clears the fixed bar.
+    // The section can grow after fonts/images settle (and the lazy chunk land),
+    // so re-align once; without it the deep link lands ~1 screen short.
+    const align = () => {
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 100 });
+    };
+    align();
+    const timer = setTimeout(align, 700);
+    return () => clearTimeout(timer);
+  }, [show, anchorId]);
+
+  useEffect(() => {
+    if (show) return;
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setShow(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShow(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "800px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show]);
+
+  return (
+    // The anchor id lives on the wrapper for the section's whole life, so a
+    // fast scroll / #hash jump always has a target — even while the lazy chunk
+    // is still in flight (the section below no longer carries the id).
+    <div ref={ref} id={anchorId} className="scroll-mt-16" style={show ? undefined : { minHeight }}>
+      {show ? (
+        <Suspense fallback={<DeferredFallback minHeight={minHeight} />}>{children}</Suspense>
+      ) : (
+        <DeferredFallback />
       )}
-    </>
+    </div>
   );
 };
+
+// Keeps the deferred block's footprint while its chunk loads, so a fast scroll
+// sees a placeholder of the right size instead of a collapsing page.
+const DeferredFallback = ({ minHeight }) => (
+  <div style={{ minHeight }} className="animate-pulse px-[5%] lg:px-[10%] py-10 space-y-4" aria-hidden="true">
+    <div className="h-8 w-48 rounded bg-soft" />
+    <div className="h-4 w-64 rounded bg-soft" />
+    <div className="h-64 w-full rounded-xl bg-soft" />
+  </div>
+);
+
+const LandingPage = ({ showWelcome, setShowWelcome }) => (
+  <>
+    <AnimatePresence>
+      {showWelcome && (
+        <Suspense fallback={null}>
+          <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
+        </Suspense>
+      )}
+    </AnimatePresence>
+
+    <Navbar />
+    <div className="pt-16">
+      <Home />
+      <About />
+      <Deferred anchorId="Portofolio">
+        <Portofolio />
+      </Deferred>
+      <Deferred anchorId="Contact" minHeight="40vh">
+        <ContactPage />
+      </Deferred>
+      <Footer />
+    </div>
+  </>
+);
 
 const ProjectPageLayout = () => (
   <>
@@ -102,7 +169,6 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
-    clearStaleCache();
     AOS.init({ once: false, offset: 10 });
     let refreshTimer;
     const onResize = () => {
@@ -111,24 +177,73 @@ function App() {
     };
     window.addEventListener("resize", onResize);
 
-    // Off the critical path: socket + prefetch run when the browser is idle.
-    // The 400ms prefetch delay also lets the visible tab's own fetch finish
-    // first, so prefetch skips it instead of duplicating the request.
+    // Data prefetch + realtime socket: after load + 3.5 s + an idle slot, or on
+    // the first interaction — whichever comes first. Dynamic imports keep the
+    // 53 KB Supabase chunk out of the initial graph.
     let idleId;
+    let delayTimer;
     let prefetchTimer;
     let stopRealtime;
-    const runIdle = () => {
-      try { stopRealtime = initRealtimeSync(); } catch { /* noop */ }
-      prefetchTimer = setTimeout(() => { prefetchPortfolioData(); }, 400);
+    let cancelled = false;
+    let started = false;
+
+    const warmData = () => {
+      if (started || cancelled) return;
+      started = true;
+      clearTimeout(delayTimer);
+      if (idleId && typeof window.cancelIdleCallback === "function") {
+        try { window.cancelIdleCallback(idleId); } catch { /* noop */ }
+      }
+      Promise.all([
+        import("./utils/portfolioPrefetch"),
+        import("./utils/realtimeSync"),
+      ])
+        .then(([{ prefetchPortfolioData, clearStaleCache }, { initRealtimeSync }]) => {
+          if (cancelled) return;
+          clearStaleCache();
+          try { stopRealtime = initRealtimeSync(); } catch { /* noop */ }
+          prefetchTimer = setTimeout(() => { prefetchPortfolioData(); }, 400);
+        })
+        .catch(() => { /* offline or chunk failed: the page still works */ });
     };
-    if (typeof window.requestIdleCallback === "function") {
-      idleId = window.requestIdleCallback(runIdle, { timeout: 3000 });
-    } else {
-      prefetchTimer = setTimeout(runIdle, 500);
-    }
+
+    const scheduleIdle = () => {
+      delayTimer = setTimeout(() => {
+        if (typeof window.requestIdleCallback === "function") {
+          idleId = window.requestIdleCallback(warmData, { timeout: 5000 });
+        } else {
+          warmData();
+        }
+      }, 3500);
+    };
+
+    // Section chunks (~250 KB of MUI/Contact) are only fetched once the visitor
+    // shows intent to scroll. Doing it on a timer would push that parse into the
+    // first-load window (TBT) for visitors who never leave the hero; doing it on
+    // the IO alone means the section mounts empty. Intent + an 800 px lookahead
+    // gives the chunk a head start, and the skeleton covers the rest.
+    let sectionsWarmed = false;
+    const warmSections = () => {
+      if (sectionsWarmed || cancelled) return;
+      sectionsWarmed = true;
+      Promise.all([import("./Pages/Portofolio"), import("./Pages/Contact")])
+        .catch(() => { /* offline: the click handler will retry */ });
+    };
+    const intentEvents = ["wheel", "touchmove", "keydown"];
+    intentEvents.forEach((evt) => window.addEventListener(evt, warmSections, { passive: true, once: true }));
+    window.addEventListener("scroll", warmSections, { passive: true, once: true });
+
+    if (document.readyState === "complete") scheduleIdle();
+    else window.addEventListener("load", scheduleIdle, { once: true });
+
     return () => {
+      cancelled = true;
+      window.removeEventListener("load", scheduleIdle);
+      window.removeEventListener("scroll", warmSections);
       window.removeEventListener("resize", onResize);
+      intentEvents.forEach((evt) => window.removeEventListener(evt, warmSections));
       clearTimeout(refreshTimer);
+      clearTimeout(delayTimer);
       clearTimeout(prefetchTimer);
       if (idleId && typeof window.cancelIdleCallback === "function") {
         try { window.cancelIdleCallback(idleId); } catch { /* noop */ }
@@ -153,9 +268,9 @@ function App() {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
           <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
-          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+          <Route path="/login" element={<PageTransition><Suspense fallback={null}><Login /></Suspense></PageTransition>} />
           <Route path="/thank-you" element={<PageTransition><Suspense fallback={null}><ThankYouPage /></Suspense></PageTransition>} />
-          <Route path="/dashboard/*" element={<PageTransition><ProtectedRoute><Suspense fallback={<div className="min-h-screen" />}><Dashboard /></Suspense></ProtectedRoute></PageTransition>} />
+          <Route path="/dashboard/*" element={<PageTransition><Suspense fallback={<div className="min-h-screen" />}><ProtectedRoute><Dashboard /></ProtectedRoute></Suspense></PageTransition>} />
           <Route path="*" element={<PageTransition><Suspense fallback={null}><NotFoundPage /></Suspense></PageTransition>} />
         </Routes>
       </AnimatePresence>

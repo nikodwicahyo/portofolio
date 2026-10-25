@@ -16,6 +16,12 @@ dist/
 # Supabase CLI scratch state
 supabase/.temp/
 
+# Local encode sources (not deployed, not bundled)
+assets-src/
+
+# Local Lighthouse runs
+.lighthouse/
+
 .PresenceWidget.jsx
 
 # Editor directories and files

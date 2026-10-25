@@ -1,9 +1,15 @@
-import { getSupabase } from '../supabase.js';
-
 // ponytail: 1 table, no external script, no CSP change, no PII.
 // Ceiling: coarse counts only; upgrade to Plausible when funnels matter.
 const SESSION_KEY = 'analytics_session';
 const QUEUE_KEY = 'analytics_queue_v1';
+
+function queueRow(row) {
+  try {
+    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    q.push({ ...row, created_at: new Date().toISOString() });
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-50)));
+  } catch { /* storage full */ }
+}
 
 function sessionId() {
   try {
@@ -20,17 +26,23 @@ export function trackEvent(name, meta = {}) {
   try {
     const allowed = ['contact_submit', 'cv_view', 'cv_download', 'project_click', 'project_detail_view', 'github_click'];
     if (!allowed.includes(name)) return;
-    const sb = getSupabase();
     const row = {
       event: name,
       path: typeof window !== 'undefined' ? window.location.pathname.slice(0, 200) : null,
       meta: { ...meta, sid: sessionId() },
     };
+    // Dynamic so the Supabase client never lands in the landing chunk; an event
+    // is fire-and-forget, so a failed import just queues it for the next one.
+    import('../supabase.js')
+      .then(({ getSupabase }) => send(getSupabase(), row))
+      .catch(() => queueRow(row));
+  } catch { /* never break UI for analytics */ }
+}
+
+function send(sb, row) {
+  try {
     if (!sb) {
-      // Offline queue: flush on next track.
-      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-      q.push({ ...row, created_at: new Date().toISOString() });
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-50)));
+      queueRow(row);
       return;
     }
     // Flush backlog first (best-effort, capped).
@@ -42,5 +54,5 @@ export function trackEvent(name, meta = {}) {
       }
     } catch { /* noop */ }
     sb.from('portfolio_events').insert(row).then(() => {}, () => {});
-  } catch { /* never break UI for analytics */ }
+  } catch { /* noop */ }
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, memo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Github, Linkedin, Mail, ExternalLink, Instagram } from "lucide-react"
 import { goToPortfolioTab } from "../services/portfolio"
+import { detectAlphaVideoSupport, pickHeroSources } from "../utils/video"
 
 const StatusBadge = memo(() => (
   <div className="inline-block lg:mx-0" data-aos="zoom-in" data-aos-delay="400">
@@ -73,6 +74,26 @@ const SOCIAL_LINKS = [
   { icon: Mail, link: "mailto:nikodwchy@gmail.com", label: "Email" }
 ];
 
+const HAS_ALPHA_VIDEO = detectAlphaVideoSupport();
+const SMALL_HERO_QUERY = "(max-width: 640px)";
+
+// Phones get the 540px encode (~5x less data than the 1200px one); the
+// listener keeps it correct across rotation/resize without a 3rd rendition.
+const useSmallHeroViewport = () => {
+  const [small, setSmall] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia(SMALL_HERO_QUERY).matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(SMALL_HERO_QUERY);
+    const onChange = (event) => setSmall(event.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return small;
+};
+
 const TypewriterText = memo(() => {
   const [text, setText] = useState("")
   const [isTyping, setIsTyping] = useState(true)
@@ -125,11 +146,19 @@ TypewriterText.displayName = "TypewriterText";
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
+  const smallHeroViewport = useSmallHeroViewport()
 
   useEffect(() => {
     setIsLoaded(true);
     return () => setIsLoaded(false);
   }, []);
+
+  const heroMotion = `w-full h-full object-contain transition-all duration-500 ${
+    isHovering
+      ? "scale-[95%] sm:scale-[90%] md:scale-[90%] lg:scale-[90%] rotate-2"
+      : "scale-[90%] sm:scale-[80%] md:scale-[80%] lg:scale-[80%]"
+  }`;
+  const heroSources = pickHeroSources({ smallViewport: smallHeroViewport, alphaVideo: HAS_ALPHA_VIDEO });
 
   return (
     <>
@@ -210,21 +239,21 @@ const Home = () => {
                 onMouseLeave={() => setIsHovering(false)}
                 data-aos="fade-left"
                 data-aos-delay="600">
-                <div className="relative w-full opacity-90">
-                  <div className="relative lg:left-12 z-10 w-full opacity-90 transform transition-transform duration-500" data-aos="fade-left">
+                <div className="relative w-full">
+                  <div className="relative lg:left-12 z-10 w-full transform transition-transform duration-500" data-aos="fade-left">
                     <video
-                      src="/Animation.mp4"
-                      aria-label="Niko Dwicahyo Widiyanto — Full-Stack Web Developer and AI Engineer at work"
+                      src={heroSources.video}
+                      poster={heroSources.poster}
+                      aria-hidden="true"
                       autoPlay
                       loop
                       muted
                       playsInline
                       preload="metadata"
-                      className={`w-full h-full object-contain transition-all duration-500 ${
-                        isHovering 
-                          ? "scale-[95%] sm:scale-[90%] md:scale-[90%] lg:scale-[90%] rotate-2" 
-                          : "scale-[90%] sm:scale-[80%] md:scale-[80%] lg:scale-[80%]"
-                      }`}
+                      disablePictureInPicture
+                      width={1200}
+                      height={1200}
+                      className={`hero-video ${HAS_ALPHA_VIDEO ? "" : "hero-video--fallback"} ${heroMotion}`}
                     />
                   </div>
                 </div>
