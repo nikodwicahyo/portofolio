@@ -5,6 +5,7 @@ import { toSlug } from "../utils/slug";
 import { safeExternalUrl } from "../utils/fileType";
 import { trackEvent } from "../utils/analytics";
 import { optimizedImageUrl, projectSrcSet } from "../utils/image";
+import { rememberPortfolioOrigin } from "../utils/navigation";
 import LazyImage from "./LazyImage";
 
 const CARD_SIZES = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw";
@@ -16,7 +17,7 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
 
   const openDetail = useCallback(() => {
     if (!detailPath) return;
-    try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+    rememberPortfolioOrigin();
     trackEvent('project_click', { title: Title });
     navigate(detailPath);
   }, [navigate, detailPath, Title]);
@@ -85,7 +86,7 @@ const CardProject = memo(({ Img, Title, Description, Link: ProjectLink, id }) =>
                   to={`/project/${toSlug(Title)}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    try { sessionStorage.setItem('scrollToPortfolio', 'true'); } catch { /* best-effort */ }
+                    rememberPortfolioOrigin();
                   }}
                   className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-soft hover:bg-soft-strong text-primary transition-all duration-200 hover:border-edge-strong border border-edge text-xs sm:text-sm"
                 >

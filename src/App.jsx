@@ -13,6 +13,7 @@ import Footer from "./components/Footer";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import { goAdmin } from "./utils/goAdmin";
+import { scrollToHash } from "./utils/navigation";
 
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
 const ContactPage = lazy(() => import("./Pages/Contact"));
@@ -49,21 +50,6 @@ const Deferred = ({ anchorId, minHeight = "50vh", children }) => {
   const [show, setShow] = useState(
     () => typeof window !== "undefined" && window.location.hash === `#${anchorId}`
   );
-
-  useEffect(() => {
-    if (!show || window.location.hash !== `#${anchorId}`) return;
-    const el = ref.current;
-    if (!el) return;
-    // Same -100 offset the navbar uses, so the heading clears the fixed bar.
-    // The section can grow after fonts/images settle (and the lazy chunk land),
-    // so re-align once; without it the deep link lands ~1 screen short.
-    const align = () => {
-      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 100 });
-    };
-    align();
-    const timer = setTimeout(align, 700);
-    return () => clearTimeout(timer);
-  }, [show, anchorId]);
 
   useEffect(() => {
     if (show) return;
@@ -109,30 +95,38 @@ const DeferredFallback = ({ minHeight }) => (
   </div>
 );
 
-const LandingPage = ({ showWelcome, setShowWelcome }) => (
-  <>
-    <AnimatePresence>
-      {showWelcome && (
-        <Suspense fallback={null}>
-          <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
-        </Suspense>
-      )}
-    </AnimatePresence>
+const LandingPage = ({ showWelcome, setShowWelcome }) => {
+  const { hash } = useLocation();
+  // Route arrivals carry their destination in the hash (e.g. /#Portofolio from
+  // a project detail). Align after mount, then once more when lazy/deferred
+  // sections and fonts have settled.
+  useEffect(() => scrollToHash(hash), [hash]);
 
-    <Navbar />
-    <div className="pt-16">
-      <Home />
-      <About />
-      <Deferred anchorId="Portofolio">
-        <Portofolio />
-      </Deferred>
-      <Deferred anchorId="Contact" minHeight="40vh">
-        <ContactPage />
-      </Deferred>
-      <Footer />
-    </div>
-  </>
-);
+  return (
+    <>
+      <AnimatePresence>
+        {showWelcome && (
+          <Suspense fallback={null}>
+            <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      <Navbar />
+      <div className="pt-16">
+        <Home />
+        <About />
+        <Deferred anchorId="Portofolio">
+          <Portofolio />
+        </Deferred>
+        <Deferred anchorId="Contact" minHeight="40vh">
+          <ContactPage />
+        </Deferred>
+        <Footer />
+      </div>
+    </>
+  );
+};
 
 const ProjectPageLayout = () => (
   <>

@@ -23,6 +23,7 @@ import { safeExternalUrl } from "../utils/fileType";
 import { fullHdUrl, projectDetailUrl, projectSrcSet } from "../utils/image";
 import { PROJECTS_CACHE_KEY } from "../utils/portfolioPrefetch";
 import { onPortfolioDataUpdated } from "../utils/realtimeSync";
+import { goToSection } from "../utils/navigation";
 import ImageViewerModal from "./ImageViewerModal";
 
 const TECH_ICONS = {
@@ -156,12 +157,14 @@ const ProjectDetails = () => {
 
   const goBack = () => {
     try { sessionStorage.setItem('welcomeShown', '1'); } catch { /* best-effort */ }
-    if (location.key === "default") {
-      sessionStorage.setItem('scrollToPortfolio', 'true');
-      navigate("/");
-    } else {
+    // A history entry carries the portfolio hash (see CardProject), so popping
+    // it restores both the section and the previously selected tab.
+    if (location.key !== "default") {
       navigate(-1);
+      return;
     }
+    // Direct load has no in-app history: replace it with the portfolio section.
+    goToSection(navigate, "Portofolio", { replace: true });
   };
 
   useEffect(() => {

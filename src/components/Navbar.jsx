@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import useTheme from "../hooks/useTheme";
+import { goToSection } from "../utils/navigation";
 
 const navItems = [
     { href: "#Home", label: "Home" },
@@ -14,6 +16,15 @@ const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState("Home");
     const { theme, toggleTheme } = useTheme();
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+
+    // Project detail belongs to the Portfolio section, but the landing anchors
+    // do not exist there, so the scroll spy below can never pick one.
+    const onProjectPage = pathname.startsWith("/project");
+    const currentSection = onProjectPage ? "Portofolio" : activeSection;
+    // Keep anchors meaningful off-landing (middle-click/new tab opens /#id).
+    const hrefFor = (hash) => (onProjectPage ? `/${hash}` : hash);
     
     useEffect(() => {
         let rafId = 0;
@@ -69,18 +80,7 @@ const Navbar = () => {
 
     const scrollToSection = (e, href) => {
         e.preventDefault();
-        const section = document.querySelector(href);
-        if (section) {
-            // getBoundingClientRect is document-accurate; offsetTop breaks when
-            // the target is nested inside positioned ancestors (Contact section).
-            const top = section.getBoundingClientRect().top + window.scrollY - 100;
-            window.scrollTo({
-                top: top,
-                behavior: "smooth"
-            });
-            // preventDefault blocks the native hash change — sync URL without a jump.
-            try { window.history.replaceState(null, "", href); } catch { /* best-effort */ }
-        }
+        goToSection(navigate, href.replace("#", ""));
         setIsOpen(false);
     };
 
@@ -99,7 +99,7 @@ const Navbar = () => {
                     {/* Logo */}
                     <div className="flex-shrink-0">
                         <a
-                            href="#Home"
+                            href={hrefFor("#Home")}
                             onClick={(e) => scrollToSection(e, "#Home")}
                             className="flex items-center gap-2 text-lg font-semibold text-primary"
                         >
@@ -115,13 +115,13 @@ const Navbar = () => {
                             {navItems.map((item) => (
                                 <a
                                     key={item.label}
-                                    href={item.href}
+                                    href={hrefFor(item.href)}
                                     onClick={(e) => scrollToSection(e, item.href)}
                                     className="group relative px-1 py-2 text-sm font-medium"
                                 >
                                     <span
                                         className={`relative z-10 transition-colors duration-300 ${
-                                            activeSection === item.href.substring(1)
+                                            currentSection === item.href.substring(1)
                                                 ? "text-primary font-semibold"
                                                 : "text-secondary group-hover:text-primary"
                                         }`}
@@ -130,7 +130,7 @@ const Navbar = () => {
                                     </span>
                                     <span
                                         className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary transform origin-left transition-transform duration-300 ${
-                                            activeSection === item.href.substring(1)
+                                            currentSection === item.href.substring(1)
                                                 ? "scale-x-100"
                                                 : "scale-x-0 group-hover:scale-x-100"
                                         }`}
@@ -185,10 +185,10 @@ const Navbar = () => {
                     {navItems.map((item, index) => (
                         <a
                             key={item.label}
-                            href={item.href}
+                            href={hrefFor(item.href)}
                             onClick={(e) => scrollToSection(e, item.href)}
                             className={`block px-4 py-3 text-lg font-medium transition-all duration-300 ease ${
-                                activeSection === item.href.substring(1)
+                                currentSection === item.href.substring(1)
                                     ? "text-primary font-semibold"
                                     : "text-secondary hover:text-primary"
                             }`}
