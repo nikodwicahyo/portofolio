@@ -474,7 +474,7 @@ export default function FullWidthTabs() {
       setValue(i);
       try {
         const el = document.getElementById('Portofolio');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (el) el.scrollIntoView({ behavior: "smooth", block: 'start' });
       } catch { /* best-effort */ }
     };
     window.addEventListener(PORTFOLIO_TAB_EVENT, onGotoTab);
@@ -491,7 +491,7 @@ export default function FullWidthTabs() {
     if (sessionStorage.getItem('scrollToPortfolio')) {
       sessionStorage.removeItem('scrollToPortfolio');
       const el = document.getElementById('Portofolio');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el) el.scrollIntoView({ behavior: "smooth", block: 'start' });
     }
   }, []);
 
@@ -540,7 +540,7 @@ export default function FullWidthTabs() {
     if (collapsing) {
       const ref = type === 'projects' ? projectsToggleRef : certsToggleRef;
       setTimeout(() => {
-        try { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* best-effort */ }
+        try { ref.current?.scrollIntoView({ behavior: "smooth", block: 'center' }); } catch { /* best-effort */ }
       }, 50);
     }
   }, [showAllProjects, showAllCertificates]);

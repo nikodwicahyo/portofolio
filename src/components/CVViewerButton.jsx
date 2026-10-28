@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { trackEvent } from "../utils/analytics";
 import { FileText, Loader2 } from "lucide-react";
+import useInView from "../hooks/useInView";
 
 // Supabase and the realtime listener are imported on demand so neither lands in
 // the landing chunk; the section renders from cache first anyway.
@@ -23,11 +24,13 @@ const readCvCache = () => {
 };
 
 const CVViewerButton = () => {
+  const [inViewRef, inView] = useInView();
   const [cv, setCv] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openPdf, setOpenPdf] = useState(false);
 
   useEffect(() => {
+    if (!inView) return undefined;
     let cancelled = false;
     setLoading(true);
 
@@ -77,7 +80,7 @@ const CVViewerButton = () => {
       })
       .catch(() => {});
     return () => { cancelled = true; unsub?.(); };
-  }, []);
+  }, [inView]);
 
   const handleView = async () => {
     if (cv?.file_data) {
@@ -112,6 +115,7 @@ const CVViewerButton = () => {
   return (
     <>
       <button
+        ref={inViewRef}
         onClick={handleView}
         disabled={disabled}
         data-aos="fade-up"

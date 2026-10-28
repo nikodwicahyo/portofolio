@@ -32,7 +32,8 @@ html:not(.light) .hero-video--fallback {
 	--soft-strong: rgba(255, 255, 255, 0.1);
 	--primary: #fafafa;
 	--secondary: #a1a1aa;
-	--muted: #71717a;
+	/* 4.68:1 on --bg (AA for body text); was 4.11 with #71717a. */
+	--muted: #7a7a83;
 	--faint: #52525b;
 	--invert: #ffffff;
 	--invert-text: #09090b;
@@ -80,7 +81,6 @@ html.light {
 	padding: 0;
 	box-sizing: border-box;
 	  font-family: "Inter", system-ui, sans-serif;
-	scroll-behavior: smooth;
 	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar) var(--scrollbar-track);
 }
@@ -89,7 +89,7 @@ html,
 body {
 	overflow-x: hidden;
 	background: var(--bg);
-	scroll-behavior: smooth !important;
+	scroll-behavior: smooth;
 }
 
 
@@ -262,4 +262,65 @@ body {
   outline: 2px solid var(--edge-strong);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Route transition (CSS-only; the entry no longer ships framer-motion). */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.page-enter {
+  animation: pageEnter 0.3s ease-out both;
+}
+
+/* Hero entrance. Runs at mount, so a cold visit would play it behind the 3 s
+   welcome overlay and reveal an already-static page. `Home` therefore adds
+   `.hero-enter` only once the splash is gone; the cascade below is pure CSS, so
+   it never waits on JS timers or on AOS. */
+@keyframes heroEnter {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.hero-enter .hero-seq > * {
+  animation: heroEnter 0.5s ease-out both;
+}
+/* The poster is the largest paint on the page: sliding it in keeps the motion
+   but never delays the paint, which an opacity gate would. */
+@keyframes heroSlide {
+  from { transform: translateY(24px); }
+  to { transform: none; }
+}
+.hero-enter .hero-media {
+  animation: heroSlide 0.6s ease-out both;
+  animation-delay: 0.18s;
+}
+.hero-enter .hero-seq > *:nth-child(2) { animation-delay: 0.06s; }
+.hero-enter .hero-seq > *:nth-child(3) { animation-delay: 0.12s; }
+.hero-enter .hero-seq > *:nth-child(4) { animation-delay: 0.18s; }
+.hero-enter .hero-seq > *:nth-child(5) { animation-delay: 0.24s; }
+.hero-enter .hero-seq > *:nth-child(6) { animation-delay: 0.3s; }
+.hero-enter .hero-seq > *:nth-child(7) { animation-delay: 0.36s; }
+
+/* Welcome overlay exit: same fade + scale + blur the splash had with
+   framer-motion, at the same 0.8 s. */
+@keyframes splashOut {
+  from { opacity: 1; transform: scale(1); filter: blur(0); }
+  to { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+}
+.splash-out {
+  animation: splashOut 0.8s ease-in-out forwards;
+  pointer-events: none;
+}
+@keyframes splashChildOut {
+  to { opacity: 0; transform: translateY(-20px); }
+}
+.splash-out .splash-child {
+  animation: splashChildOut 0.4s ease-in-out both;
+}
+.splash-out .splash-child:nth-child(2) { animation-delay: 0.1s; }
+.splash-out .splash-child:nth-child(3) { animation-delay: 0.2s; }
+
+/* Same soft glow as the old blurred disc, without the filter pass. */
+.ambient-glow {
+  background: radial-gradient(60rem 60rem at 50% -20%, var(--glow), transparent 70%);
 }

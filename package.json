@@ -13,6 +13,8 @@
     "test": "node scripts/prefetchDedupe.test.mjs && node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs && node scripts/heroVideo.test.mjs",
     "check-links": "node scripts/check-links.mjs",
     "check-api": "node scripts/check-api-hardening.mjs",
+    "perf:budget": "node scripts/perfBudget.mjs",
+    "verify": "npm run lint && npm test && npm run build && npm run perf:budget",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,7 +25,6 @@
     "@supabase/supabase-js": "^2.49.9",
     "aos": "^2.3.4",
     "axios": "^1.10.0",
-    "framer-motion": "^11.15.0",
     "lucide-react": "^0.454.0",
     "pdfjs-dist": "^6.4.299",
     "react": "^18.3.1",

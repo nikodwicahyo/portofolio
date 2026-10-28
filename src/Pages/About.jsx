@@ -2,6 +2,7 @@ import { useEffect, useState, memo, useMemo } from "react"
 import { Code, Award, Globe, ArrowUpRight } from "lucide-react"
 import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
+import useInView from "../hooks/useInView"
 import { PROJECTS_CACHE_KEY, goToPortfolioTab } from "../services/portfolio"
 
 // Memoized Components
@@ -108,6 +109,9 @@ const safeLen = (key) => {
 };
 
 const AboutPage = () => {
+  // Counts and the realtime socket are below the fold: wait until the section
+  // is actually approached, so a first load never opens Supabase.
+  const [inViewRef, inView] = useInView();
   const [counts, setCounts] = useState(() => {
     try {
       const p = Number(localStorage.getItem("about_projects_count")) ||
@@ -123,6 +127,7 @@ const AboutPage = () => {
   const [countVersion, setCountVersion] = useState(0);
 
   useEffect(() => {
+    if (!inView) return undefined;
     let unsub;
     let cancelled = false;
     // Dynamic so the Supabase client stays out of the landing chunk.
@@ -132,9 +137,10 @@ const AboutPage = () => {
       })
       .catch(() => {});
     return () => { cancelled = true; unsub?.(); };
-  }, []);
+  }, [inView]);
 
   useEffect(() => {
+    if (!inView) return undefined;
     let cancelled = false;
     const fetchCounts = async () => {
       try {
@@ -185,7 +191,7 @@ const AboutPage = () => {
     };
     fetchCounts();
     return () => { cancelled = true; };
-  }, [countVersion]);
+  }, [countVersion, inView]);
 
   // Memoized stats data
   // tab: TABS index in services/portfolio.js (0 Experiences, 1 Projects, 2 Certificates)
@@ -218,6 +224,7 @@ const AboutPage = () => {
 
   return (
     <div
+      ref={inViewRef}
       className="h-auto pb-[10%] text-primary overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] scroll-mt-16" 
       id="About"
      itemScope

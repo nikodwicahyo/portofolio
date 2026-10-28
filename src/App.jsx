@@ -8,8 +8,10 @@ import Navbar from "./components/Navbar";
 import Home from "./Pages/Home";
 import About from "./Pages/About";
 import AnimatedBackground from "./components/Background";
-import { AnimatePresence, motion } from "framer-motion";
 import Footer from "./components/Footer";
+// Static, not lazy: the welcome overlay is the first paint of a cold visit, so
+// its code must be in the entry chunk rather than one round trip away.
+import WelcomeScreen from "./Pages/WelcomeScreen";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import { goAdmin } from "./utils/goAdmin";
@@ -18,7 +20,6 @@ import { scrollToHash } from "./utils/navigation";
 const Portofolio = lazy(() => import("./Pages/Portofolio"));
 const ContactPage = lazy(() => import("./Pages/Contact"));
 const ProjectDetails = lazy(() => import("./components/ProjectDetail"));
-const WelcomeScreen = lazy(() => import("./Pages/WelcomeScreen"));
 const NotFoundPage = lazy(() => import("./Pages/404"));
 const ThankYouPage = lazy(() => import("./Pages/ThankYou"));
 const Dashboard = lazy(() => import("./Pages/Dashboard"));
@@ -26,17 +27,9 @@ const Dashboard = lazy(() => import("./Pages/Dashboard"));
 const Login = lazy(() => import("./Pages/Login"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 
-const pageVariants = {
-  initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
-  exit: { opacity: 0, y: -16, transition: { duration: 0.2, ease: "easeIn" } },
-};
-
-const PageTransition = ({ children }) => (
-  <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
-    {children}
-  </motion.div>
-);
+// CSS-only route transition. framer-motion used to sit in the entry graph just
+// for this; only the lazy welcome splash still imports it now.
+const PageTransition = ({ children }) => <div className="page-enter">{children}</div>;
 
 // Mounts below-the-fold sections once they are within 400 px of the viewport,
 // which keeps the MUI/section chunks out of the first load without showing an
@@ -104,17 +97,15 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
 
   return (
     <>
-      <AnimatePresence>
-        {showWelcome && (
-          <Suspense fallback={null}>
-            <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
-          </Suspense>
-        )}
-      </AnimatePresence>
+      {showWelcome && (
+        <Suspense fallback={null}>
+          <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
+        </Suspense>
+      )}
 
       <Navbar />
-      <div className="pt-16">
-        <Home />
+      <main className="pt-16">
+        <Home revealed={!showWelcome} />
         <About />
         <Deferred anchorId="Portofolio">
           <Portofolio />
@@ -122,8 +113,8 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
         <Deferred anchorId="Contact" minHeight="40vh">
           <ContactPage />
         </Deferred>
-        <Footer />
-      </div>
+      </main>
+      <Footer />
     </>
   );
 };
@@ -131,11 +122,11 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
 const ProjectPageLayout = () => (
   <>
     <Navbar />
-    <div className="pt-16">
+    <main className="pt-16">
       <Suspense fallback={<div className="min-h-screen" />}>
         <ProjectDetails />
       </Suspense>
-    </div>
+    </main>
     <Footer />
   </>
 );
@@ -163,6 +154,8 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
+    // Reveal on every pass (as before), independent of the OS motion setting:
+    // the reveals are the site's intended look.
     AOS.init({ once: false, offset: 10 });
     let refreshTimer;
     const onResize = () => {
@@ -171,11 +164,10 @@ function App() {
     };
     window.addEventListener("resize", onResize);
 
-    // Data prefetch + realtime socket: after load + 3.5 s + an idle slot, or on
-    // the first interaction — whichever comes first. Dynamic imports keep the
-    // 53 KB Supabase chunk out of the initial graph.
-    let idleId;
-    let delayTimer;
+    // Data prefetch + realtime socket: first scroll/key/touch, or an 8 s
+    // fallback for visitors who never move. Both stay out of the measured
+    // first-load window, and the 53 KB Supabase chunk is still dynamic.
+    let fallbackTimer;
     let prefetchTimer;
     let stopRealtime;
     let cancelled = false;
@@ -184,10 +176,7 @@ function App() {
     const warmData = () => {
       if (started || cancelled) return;
       started = true;
-      clearTimeout(delayTimer);
-      if (idleId && typeof window.cancelIdleCallback === "function") {
-        try { window.cancelIdleCallback(idleId); } catch { /* noop */ }
-      }
+      clearTimeout(fallbackTimer);
       Promise.all([
         import("./utils/portfolioPrefetch"),
         import("./utils/realtimeSync"),
@@ -201,47 +190,39 @@ function App() {
         .catch(() => { /* offline or chunk failed: the page still works */ });
     };
 
-    const scheduleIdle = () => {
-      delayTimer = setTimeout(() => {
-        if (typeof window.requestIdleCallback === "function") {
-          idleId = window.requestIdleCallback(warmData, { timeout: 5000 });
-        } else {
-          warmData();
-        }
-      }, 3500);
-    };
-
-    // Section chunks (~250 KB of MUI/Contact) are only fetched once the visitor
-    // shows intent to scroll. Doing it on a timer would push that parse into the
-    // first-load window (TBT) for visitors who never leave the hero; doing it on
-    // the IO alone means the section mounts empty. Intent + an 800 px lookahead
-    // gives the chunk a head start, and the skeleton covers the rest.
+    // Section chunks (~200 KB of MUI) are only fetched once the visitor shows
+    // intent. Contact loads through its own Deferred sentinel, so a keypress
+    // near the hero no longer pulls its form/validation chunk too.
     let sectionsWarmed = false;
     const warmSections = () => {
       if (sectionsWarmed || cancelled) return;
       sectionsWarmed = true;
-      Promise.all([import("./Pages/Portofolio"), import("./Pages/Contact")])
-        .catch(() => { /* offline: the click handler will retry */ });
+      import("./Pages/Portofolio").catch(() => { /* the click handler retries */ });
     };
-    const intentEvents = ["wheel", "touchmove", "keydown"];
-    intentEvents.forEach((evt) => window.addEventListener(evt, warmSections, { passive: true, once: true }));
-    window.addEventListener("scroll", warmSections, { passive: true, once: true });
 
-    if (document.readyState === "complete") scheduleIdle();
-    else window.addEventListener("load", scheduleIdle, { once: true });
+    const onIntent = () => {
+      warmData();
+      warmSections();
+    };
+    const intentEvents = ["wheel", "touchmove", "keydown", "scroll"];
+    intentEvents.forEach((evt) =>
+      window.addEventListener(evt, onIntent, { passive: true, once: true })
+    );
+
+    const scheduleFallback = () => {
+      fallbackTimer = setTimeout(warmData, 8000);
+    };
+    if (document.readyState === "complete") scheduleFallback();
+    else window.addEventListener("load", scheduleFallback, { once: true });
 
     return () => {
       cancelled = true;
-      window.removeEventListener("load", scheduleIdle);
-      window.removeEventListener("scroll", warmSections);
+      window.removeEventListener("load", scheduleFallback);
       window.removeEventListener("resize", onResize);
-      intentEvents.forEach((evt) => window.removeEventListener(evt, warmSections));
+      intentEvents.forEach((evt) => window.removeEventListener(evt, onIntent));
       clearTimeout(refreshTimer);
-      clearTimeout(delayTimer);
+      clearTimeout(fallbackTimer);
       clearTimeout(prefetchTimer);
-      if (idleId && typeof window.cancelIdleCallback === "function") {
-        try { window.cancelIdleCallback(idleId); } catch { /* noop */ }
-      }
       try { stopRealtime?.(); } catch { /* noop */ }
     };
   }, []);
@@ -258,16 +239,14 @@ function App() {
       <div className="pointer-events-none">
   <AnimatedBackground />
 </div>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
-          <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
-          <Route path="/login" element={<PageTransition><Suspense fallback={null}><Login /></Suspense></PageTransition>} />
-          <Route path="/thank-you" element={<PageTransition><Suspense fallback={null}><ThankYouPage /></Suspense></PageTransition>} />
-          <Route path="/dashboard/*" element={<PageTransition><Suspense fallback={<div className="min-h-screen" />}><ProtectedRoute><Dashboard /></ProtectedRoute></Suspense></PageTransition>} />
-          <Route path="*" element={<PageTransition><Suspense fallback={null}><NotFoundPage /></Suspense></PageTransition>} />
-        </Routes>
-      </AnimatePresence>
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
+        <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><Suspense fallback={null}><Login /></Suspense></PageTransition>} />
+        <Route path="/thank-you" element={<PageTransition><Suspense fallback={null}><ThankYouPage /></Suspense></PageTransition>} />
+        <Route path="/dashboard/*" element={<PageTransition><Suspense fallback={<div className="min-h-screen" />}><ProtectedRoute><Dashboard /></ProtectedRoute></Suspense></PageTransition>} />
+        <Route path="*" element={<PageTransition><Suspense fallback={null}><NotFoundPage /></Suspense></PageTransition>} />
+      </Routes>
     </HelmetProvider>
     </ErrorBoundary>
   );

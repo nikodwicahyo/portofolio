@@ -9,7 +9,6 @@ export default defineConfig({
         manualChunks: {
           pdfjs: ['pdfjs-dist'],
           supabase: ['@supabase/supabase-js'],
-          framer: ['framer-motion'],
         },
       },
     },

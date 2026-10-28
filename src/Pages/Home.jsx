@@ -5,7 +5,7 @@ import { goToPortfolioTab } from "../services/portfolio"
 import { detectAlphaVideoSupport, pickHeroSources } from "../utils/video"
 
 const StatusBadge = memo(() => (
-  <div className="inline-block lg:mx-0" data-aos="zoom-in" data-aos-delay="400">
+  <div className="inline-block lg:mx-0">
         <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-edge-strong bg-soft">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       <span className="text-primary sm:text-sm text-[0.7rem] font-medium">
@@ -17,7 +17,7 @@ const StatusBadge = memo(() => (
 StatusBadge.displayName = "StatusBadge";
 
 const MainTitle = memo(() => (
-  <div className="space-y-2" data-aos="fade-up" data-aos-delay="600">
+  <div className="space-y-2">
     <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-4xl xl:text-6xl font-bold tracking-tight text-primary">
       <span className="block">Full Stack Dev</span>
       <span className="block mt-2 text-primary">AI Engineer</span>
@@ -143,15 +143,11 @@ const TypewriterText = memo(() => {
 });
 TypewriterText.displayName = "TypewriterText";
 
-const Home = () => {
-  const [isLoaded, setIsLoaded] = useState(false)
+const Home = ({ revealed = true }) => {
   const [isHovering, setIsHovering] = useState(false)
+  const [videoSrc, setVideoSrc] = useState(null)
+  const videoRef = useRef(null)
   const smallHeroViewport = useSmallHeroViewport()
-
-  useEffect(() => {
-    setIsLoaded(true);
-    return () => setIsLoaded(false);
-  }, []);
 
   const heroMotion = `w-full h-full object-contain transition-all duration-500 ${
     isHovering
@@ -159,6 +155,58 @@ const Home = () => {
       : "scale-[90%] sm:scale-[80%] md:scale-[80%] lg:scale-[80%]"
   }`;
   const heroSources = pickHeroSources({ smallViewport: smallHeroViewport, alphaVideo: HAS_ALPHA_VIDEO });
+  const heroVideo = heroSources.video;
+
+  // The decorative loop is 90–480 KB and costs real decode time. Keep it off the
+  // critical path: paint the poster first and start the loop only once the
+  // welcome overlay is gone, so it never competes with the splash for CPU.
+  useEffect(() => {
+    if (!revealed) return undefined;
+    if (navigator.connection?.saveData) return undefined;
+
+    let idleId;
+    const enable = () => setVideoSrc(heroVideo);
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(enable, { timeout: 1500 });
+    } else {
+      const timer = setTimeout(enable, 150);
+      return () => clearTimeout(timer);
+    }
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+    };
+  }, [heroVideo, revealed]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+    video.load();
+    const playing = video.play();
+    if (playing?.catch) playing.catch(() => { /* autoplay blocked: poster stays */ });
+  }, [videoSrc]);
+
+  // Do not decode/paint a looping video the visitor has scrolled past.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          const playing = video.play();
+          if (playing?.catch) playing.catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(video);
+    return () => io.disconnect();
+  }, [videoSrc]);
 
   return (
     <>
@@ -188,44 +236,40 @@ const Home = () => {
       </Helmet>
 
       <div className="min-h-screen bg-bg overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] scroll-mt-16" id="Home">
-        <div className={`relative z-10 transition-all duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}>
+        <div className={`relative z-10${revealed ? " hero-enter" : ""}`}>
             <div className="container mx-auto min-h-[calc(100vh-4rem)]">
             <div className="flex flex-col lg:flex-row items-center justify-start lg:justify-between min-h-[calc(100vh-4rem)] gap-0 sm:gap-12 lg:gap-20 pt-2 sm:pt-3">
               {/* Left Column */}
-              <div className="w-full lg:w-1/2 space-y-6 sm:space-y-8 text-left lg:text-left order-1 lg:order-1 lg:mt-0"
-                data-aos="fade-right"
-                data-aos-delay="200">
-                <div className="space-y-4 sm:space-y-6">
+              <div className="w-full lg:w-1/2 space-y-6 sm:space-y-8 text-left lg:text-left order-1 lg:order-1 lg:mt-0">
+                <div className="space-y-4 sm:space-y-6 hero-seq">
                   <StatusBadge />
                   <MainTitle />
 
                   {/* Typing Effect */}
-                  <div className="h-8 flex items-center" data-aos="fade-up" data-aos-delay="800">
+                  <div className="h-8 flex items-center">
                     <TypewriterText />
                   </div>
 
                   {/* Description */}
-                  <p className="text-sm sm:text-base lg:text-lg text-secondary max-w-xl leading-relaxed font-light"
-                    data-aos="fade-up"
-                    data-aos-delay="1000">
+                  <p className="text-sm sm:text-base lg:text-lg text-secondary max-w-xl leading-relaxed font-light">
                     Architecting ecosystems with artificial intelligent to transform complex ideas into seamless digital solutions.
                   </p>
 
                   {/* Tech Stack */}
-                  <div className="flex flex-wrap gap-2 sm:gap-3 justify-start max-w-xl" data-aos="fade-up" data-aos-delay="1200">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 justify-start max-w-xl">
                     {TECH_STACK.map((tech, index) => (
                       <TechStack key={index} tech={tech} />
                     ))}
                   </div>
 
                   {/* CTA Buttons */}
-                  <div className="flex flex-row gap-3 w-full justify-start" data-aos="fade-up" data-aos-delay="1400">
+                  <div className="flex flex-row gap-3 w-full justify-start">
                     <CTAButton href="#Portofolio" onClick={() => goToPortfolioTab(0)} text="My Experiences" icon={ExternalLink} primary />
                     <CTAButton href="#Contact" text="Contact" icon={Mail} />
                   </div>
 
                   {/* Social Links */}
-                  <div className="hidden sm:flex gap-4 justify-start" data-aos="fade-up" data-aos-delay="1600">
+                  <div className="hidden sm:flex gap-4 justify-start">
                     {SOCIAL_LINKS.map((social, index) => (
                       <SocialLink key={index} {...social} />
                     ))}
@@ -234,22 +278,21 @@ const Home = () => {
               </div>
 
               {/* Right Column - WebM Video */}
-              <div className="w-full py-0 md:py-[10%] sm:py-0 lg:w-1/2 h-[260px] sm:h-[400px] lg:h-[600px] xl:h-[750px] relative flex items-center justify-center order-2 lg:order-2  mt-5 sm:mt-0"
+              <div className="w-full py-0 md:py-[10%] sm:py-0 lg:w-1/2 h-[260px] sm:h-[400px] lg:h-[600px] xl:h-[750px] relative flex items-center justify-center order-2 lg:order-2  mt-5 sm:mt-0 hero-media"
                 onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
-                data-aos="fade-left"
-                data-aos-delay="600">
+                onMouseLeave={() => setIsHovering(false)}>
                 <div className="relative w-full">
-                  <div className="relative lg:left-12 z-10 w-full transform transition-transform duration-500" data-aos="fade-left">
+                  <div className="relative lg:left-12 z-10 w-full transform transition-transform duration-500">
                     <video
-                      src={heroSources.video}
+                      ref={videoRef}
+                      src={videoSrc || undefined}
                       poster={heroSources.poster}
                       aria-hidden="true"
-                      autoPlay
+                      autoPlay={Boolean(videoSrc)}
                       loop
                       muted
                       playsInline
-                      preload="metadata"
+                      preload="none"
                       disablePictureInPicture
                       width={1200}
                       height={1200}

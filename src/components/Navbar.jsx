@@ -28,42 +28,70 @@ const Navbar = () => {
     
     useEffect(() => {
         let rafId = 0;
-        const update = () => {
-            rafId = 0;
-            const nextScrolled = window.scrollY > 20;
-            setScrolled(prev => (prev === nextScrolled ? prev : nextScrolled));
-            const sections = navItems.map(item => {
-                const section = document.querySelector(item.href);
-                if (section) {
-                    return {
-                        id: item.href.replace("#", ""),
-                        offset: section.offsetTop - 550,
-                        height: section.offsetHeight
-                    };
-                }
-                return null;
-            }).filter(Boolean);
-
-            const currentPosition = window.scrollY;
-            const active = sections.find(section => 
-                currentPosition >= section.offset && 
-                currentPosition < section.offset + section.height
-            );
-
-            if (active) {
-                setActiveSection(prev => (prev === active.id ? prev : active.id));
-            }
-        };
+        // The scroll listener now only toggles the header background. It reads
+        // scrollY (no layout) and bails when the value does not change.
         const handleScroll = () => {
             if (rafId) return;
-            rafId = requestAnimationFrame(update);
+            rafId = requestAnimationFrame(() => {
+                rafId = 0;
+                const nextScrolled = window.scrollY > 20;
+                setScrolled(prev => (prev === nextScrolled ? prev : nextScrolled));
+            });
         };
+
+        // Active section by intersection instead of offsetTop reads on every
+        // frame. Deferred sections (Portofolio/Contact) mount later, so the
+        // mutation observer picks them up once instead of querySelector-ing
+        // four nodes per scroll.
+        let io;
+        const observed = new Set();
+        if (typeof IntersectionObserver !== "undefined") {
+            io = new IntersectionObserver((entries) => {
+                const visible = entries.filter(entry => entry.isIntersecting);
+                if (!visible.length) return;
+                visible.sort((a, b) =>
+                    Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top)
+                );
+                setActiveSection(prev => (prev === visible[0].target.id ? prev : visible[0].target.id));
+            }, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+        }
+
+        let mo;
+        const observeSections = () => {
+            if (!io) return;
+            for (const item of navItems) {
+                const section = document.querySelector(item.href);
+                if (section && !observed.has(section)) {
+                    observed.add(section);
+                    io.observe(section);
+                }
+            }
+            // The hero typewriter mutates the DOM forever; stop watching as soon
+            // as every section (including the deferred ones) is registered.
+            if (observed.size === navItems.length) mo?.disconnect();
+        };
+        observeSections();
+
+        let moScheduled = false;
+        if (typeof MutationObserver !== "undefined") {
+            mo = new MutationObserver(() => {
+                if (moScheduled) return;
+                moScheduled = true;
+                requestAnimationFrame(() => {
+                    moScheduled = false;
+                    observeSections();
+                });
+            });
+            mo.observe(document.body, { childList: true, subtree: true });
+        }
 
         window.addEventListener("scroll", handleScroll, { passive: true });
         handleScroll();
         return () => {
             window.removeEventListener("scroll", handleScroll);
             if (rafId) cancelAnimationFrame(rafId);
+            io?.disconnect();
+            mo?.disconnect();
         };
     }, []);
 
@@ -142,6 +170,7 @@ const Navbar = () => {
                         {/* Theme Toggle */}
                         <div className="flex-shrink-0">
                             <button
+                                type="button"
                                 onClick={toggleTheme}
                                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                                 className="p-2 rounded-lg text-secondary hover:text-primary transition-colors duration-300"
@@ -157,7 +186,11 @@ const Navbar = () => {
                         {/* Mobile Menu Button */}
                         <div className="md:hidden">
                             <button
+                                type="button"
                                 onClick={() => setIsOpen(!isOpen)}
+                                aria-label={isOpen ? "Close menu" : "Open menu"}
+                                aria-expanded={isOpen}
+                                aria-controls="mobile-menu"
                                 className={`relative p-2 text-secondary hover:text-primary transition-transform duration-300 ease-in-out transform ${
                                     isOpen ? "rotate-90 scale-125" : "rotate-0 scale-100"
                                 }`}
@@ -175,6 +208,7 @@ const Navbar = () => {
         
             {/* Mobile Menu */}
             <div
+                id="mobile-menu"
                 className={`md:hidden transition-all duration-300 ease-in-out ${
                     isOpen
                         ? "max-h-screen opacity-100"

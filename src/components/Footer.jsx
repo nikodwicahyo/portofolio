@@ -10,9 +10,9 @@ const Footer = () => {
         <hr className="my-3 border-edge sm:mx-auto lg:my-6" />
         <span className="block text-sm pb-1 text-muted text-center">
           © {currentYear}{" "}
-          Niko Dwicahyo Widiyanto. All Rights Reserved.
+          Niko Dwicahyo Widiyanto
         </span>
-        <span className="block text-xs pb-4 text-faint text-center">
+        <span className="block text-xs pb-4 text-muted text-center">
           Jakarta, Indonesia
         </span>
         {/* Hidden admin entry: invisible until hover/focus. Entry only — auth enforced by route + RLS. */}
