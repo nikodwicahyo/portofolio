@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -88,8 +88,9 @@ const DeferredFallback = ({ minHeight }) => (
   </div>
 );
 
-const LandingPage = ({ showWelcome, setShowWelcome }) => {
+const LandingPage = ({ showWelcome, setShowWelcome, heroRevealed, onHeroReveal }) => {
   const { hash } = useLocation();
+  const onLoadingComplete = useCallback(() => setShowWelcome(false), [setShowWelcome]);
   // Route arrivals carry their destination in the hash (e.g. /#Portofolio from
   // a project detail). Align after mount, then once more when lazy/deferred
   // sections and fonts have settled.
@@ -99,13 +100,16 @@ const LandingPage = ({ showWelcome, setShowWelcome }) => {
     <>
       {showWelcome && (
         <Suspense fallback={null}>
-          <WelcomeScreen onLoadingComplete={() => setShowWelcome(false)} />
+          <WelcomeScreen
+            onLoadingComplete={onLoadingComplete}
+            onExitStart={onHeroReveal}
+          />
         </Suspense>
       )}
 
       <Navbar />
       <main className="pt-16">
-        <Home revealed={!showWelcome} />
+        <Home revealed={!showWelcome} animate={heroRevealed} />
         <About />
         <Deferred anchorId="Portofolio">
           <Portofolio />
@@ -135,6 +139,13 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(() => {
     try { return sessionStorage.getItem("welcomeShown") !== "1"; } catch { return true; }
   });
+  // Hero entrance runs in sync with the splash exit (see WelcomeScreen onExitStart),
+  // so returning visitors (no splash) animate on mount and first visitors avoid
+  // the post-splash fade-up gap.
+  const [heroRevealed, setHeroRevealed] = useState(() => {
+    try { return sessionStorage.getItem("welcomeShown") === "1"; } catch { return false; }
+  });
+  const revealHero = useCallback(() => setHeroRevealed(true), []);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -240,7 +251,7 @@ function App() {
   <AnimatedBackground />
 </div>
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} />} />
+        <Route path="/" element={<LandingPage showWelcome={showWelcome} setShowWelcome={setShowWelcome} heroRevealed={heroRevealed} onHeroReveal={revealHero} />} />
         <Route path="/project/:slug" element={<PageTransition><ProjectPageLayout /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Suspense fallback={null}><Login /></Suspense></PageTransition>} />
         <Route path="/thank-you" element={<PageTransition><Suspense fallback={null}><ThankYouPage /></Suspense></PageTransition>} />

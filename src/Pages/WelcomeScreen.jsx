@@ -32,7 +32,7 @@ const IconButton = ({ Icon }) => (
   </div>
 );
 
-const WelcomeScreen = ({ onLoadingComplete }) => {
+const WelcomeScreen = ({ onLoadingComplete, onExitStart }) => {
   const [isLoading, setIsLoading] = useState(true);
   const doneRef = useRef(null);
 
@@ -41,6 +41,9 @@ const WelcomeScreen = ({ onLoadingComplete }) => {
     // and the typewriter at 11 x 130 ms = 1.4 s. Then a beat, then the 800 ms
     // exit. Cutting this shorter truncates the animation mid-word.
     const timer = setTimeout(() => {
+      // Fire before the exit animation so the page underneath can start its
+      // entrance in sync with the splash fading out (no gap/fade-up after).
+      onExitStart?.();
       setIsLoading(false);
       doneRef.current = setTimeout(() => {
         onLoadingComplete?.();
@@ -51,7 +54,7 @@ const WelcomeScreen = ({ onLoadingComplete }) => {
       clearTimeout(timer);
       if (doneRef.current) clearTimeout(doneRef.current);
     };
-  }, [onLoadingComplete]);
+  }, [onLoadingComplete, onExitStart]);
 
   // The exit (fade + scale + blur, children drifting up) is a CSS keyframe:
   // framer-motion used to cost 40 KB gzipped and ~125 ms of boot CPU for it.

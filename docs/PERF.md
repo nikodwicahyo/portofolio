@@ -8,14 +8,19 @@ so only extension-free runs are comparable.
 | run | score | FCP | LCP | TBT | CLS |
 | --- | --- | --- | --- | --- | --- |
 | mobile, before (extensions on) | 64 | — | 3.1 s | 2 400 ms | — |
-| mobile, after (two runs) | **99 / 99** | 1.4 s | 1.9–2.0 s | 60–70 ms | 0 |
+| mobile, after (steady state) | **98** | 1.4 s | 2.0 s | 70–90 ms | 0 |
 | desktop, before (extensions on) | 81 | — | — | 400 ms | — |
 | desktop, after | **100** | 0.4 s | 0.5 s | 0 ms | 0 |
 
-Mobile LCP is still the hero poster, but it now paints as part of the first
-render instead of behind an opacity gate, and the 3 s `WelcomeScreen` no longer
-drags FCP/TBT with it. The last point is reachable only by prerendering the
-overlay into `index.html`; below ~1.2 s LCP the remaining cost is React boot.
+Steady-state means the machine is not busy: the same build scores 86–99 while a
+build or a dozen Chrome processes run in the background, because Lighthouse
+applies 4× CPU throttling to everything else too. Compare medians, not single
+runs.
+
+Mobile LCP is the hero poster, painted as part of the first render. What keeps
+mobile off 100 is Speed Index (~2.3 s) and LCP (2.0 s): both are bounded by the
+3 s welcome overlay, and the only way past them is prerendering the overlay into
+`index.html` (LCP ≈ 1.2 s) or shortening the overlay. FCP 1.4 s is React boot.
 
 Never audit `npm run dev`: Vite serves unbundled ESM (~300 module requests) with
 the development React build. Only `npm run build && npm run preview` (or the

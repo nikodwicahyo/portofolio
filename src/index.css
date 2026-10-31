@@ -301,11 +301,13 @@ body {
 .hero-enter .hero-seq > *:nth-child(6) { animation-delay: 0.3s; }
 .hero-enter .hero-seq > *:nth-child(7) { animation-delay: 0.36s; }
 
-/* Welcome overlay exit: same fade + scale + blur the splash had with
-   framer-motion, at the same 0.8 s. */
+/* Welcome overlay exit: fade + scale, the same 0.8 s the splash had with
+   framer-motion. No `filter: blur()` — on a full-viewport layer it costs a
+   main-thread paint pass that showed up as a 150–270 ms long task under mobile
+   CPU throttling, and at 90 % opacity it is invisible anyway. */
 @keyframes splashOut {
-  from { opacity: 1; transform: scale(1); filter: blur(0); }
-  to { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.1); }
 }
 .splash-out {
   animation: splashOut 0.8s ease-in-out forwards;

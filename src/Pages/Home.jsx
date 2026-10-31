@@ -143,7 +143,7 @@ const TypewriterText = memo(() => {
 });
 TypewriterText.displayName = "TypewriterText";
 
-const Home = ({ revealed = true }) => {
+const Home = ({ revealed = true, animate = false }) => {
   const [isHovering, setIsHovering] = useState(false)
   const [videoSrc, setVideoSrc] = useState(null)
   const videoRef = useRef(null)
@@ -236,7 +236,7 @@ const Home = ({ revealed = true }) => {
       </Helmet>
 
       <div className="min-h-screen bg-bg overflow-hidden px-[5%] sm:px-[5%] lg:px-[10%] scroll-mt-16" id="Home">
-        <div className={`relative z-10${revealed ? " hero-enter" : ""}`}>
+        <div className={`relative z-10${animate ? " hero-enter" : ""}`}>
             <div className="container mx-auto min-h-[calc(100vh-4rem)]">
             <div className="flex flex-col lg:flex-row items-center justify-start lg:justify-between min-h-[calc(100vh-4rem)] gap-0 sm:gap-12 lg:gap-20 pt-2 sm:pt-3">
               {/* Left Column */}
