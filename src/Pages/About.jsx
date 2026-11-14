@@ -4,6 +4,7 @@ import CVViewerButton from "../components/CVViewerButton"
 import LazyImage from "../components/LazyImage"
 import useInView from "../hooks/useInView"
 import { PROJECTS_CACHE_KEY, goToPortfolioTab } from "../services/portfolio"
+import { experienceYearsLabel, totalExperienceMonths } from "../utils/experience"
 
 // Memoized Components
 const Header = memo(() => (
@@ -96,6 +97,8 @@ const StatCard = memo(({ icon: Icon, value, label, description, animation }) => 
 StatCard.displayName = "StatCard";
 
 const CACHE_TTL = 86400000;
+// Months, not years: summed per stint so job gaps never inflate the count.
+const EXPERIENCE_MONTHS_KEY = "about_experience_months";
 const safeLen = (key) => {
   try {
     const raw = localStorage.getItem(key);
@@ -118,7 +121,7 @@ const AboutPage = () => {
                 (safeLen(PROJECTS_CACHE_KEY) > 0 ? safeLen(PROJECTS_CACHE_KEY) : 0) || 0;
       const c = Number(localStorage.getItem("about_certificates_count")) ||
                 (safeLen("certificates") > 0 ? safeLen("certificates") : 0) || 0;
-      const e = Number(localStorage.getItem("about_years_experience")) || 0;
+      const e = experienceYearsLabel(Number(localStorage.getItem(EXPERIENCE_MONTHS_KEY)));
       return { projects: p, certificates: c, yearsExperience: e };
     } catch {
       return { projects: 0, certificates: 0, yearsExperience: 0 };
@@ -147,14 +150,14 @@ const AboutPage = () => {
         const { getSupabase } = await import("../supabase");
         const sb = getSupabase();
         if (!sb) return;
-        // ponytail: counts from fresh tab caches; always keep earliest-experience query
+        // ponytail: counts from fresh tab caches; experiences are a handful of rows so always refetched
         const cachedP = safeLen(PROJECTS_CACHE_KEY);
         const cachedC = safeLen("certificates");
         const queries = [];
         const keys = [];
         if (cachedP <= 0) { queries.push(sb.from("projects").select("id", { count: "exact", head: true })); keys.push("p"); }
         if (cachedC <= 0) { queries.push(sb.from("certificates").select("id", { count: "exact", head: true })); keys.push("c"); }
-        queries.push(sb.from("experiences").select("start_date").order("start_date", { ascending: true }).limit(1)); keys.push("e");
+        queries.push(sb.from("experiences").select("start_date,end_date")); keys.push("e");
         const results = await Promise.all(queries);
         const byKey = Object.fromEntries(keys.map((k, i) => [k, results[i]]));
         const pResult = byKey.p, cResult = byKey.c, eResult = byKey.e;
@@ -169,22 +172,19 @@ const AboutPage = () => {
             ? Number(localStorage.getItem("about_certificates_count")) || 0
             : cResult.count)
           : cachedC;
-        let yearsExp = Number(localStorage.getItem("about_years_experience")) || 0;
-        if (!eResult.error && eResult.data && eResult.data.length > 0) {
-          const earliest = new Date(eResult.data[0].start_date);
-          const now = new Date();
-          yearsExp = now.getFullYear() - earliest.getFullYear() -
-            (now < new Date(now.getFullYear(), earliest.getMonth(), earliest.getDate()) ? 1 : 0);
-          localStorage.setItem("about_years_experience", String(yearsExp));
+        let monthsExp = Number(localStorage.getItem(EXPERIENCE_MONTHS_KEY)) || 0;
+        if (!eResult.error && Array.isArray(eResult.data)) {
+          monthsExp = totalExperienceMonths(eResult.data);
+          localStorage.setItem(EXPERIENCE_MONTHS_KEY, String(monthsExp));
         }
         localStorage.setItem("about_projects_count", String(projectCount));
         localStorage.setItem("about_certificates_count", String(certCount));
-        setCounts({ projects: projectCount, certificates: certCount, yearsExperience: yearsExp });
+        setCounts({ projects: projectCount, certificates: certCount, yearsExperience: experienceYearsLabel(monthsExp) });
       } catch {
         if (!cancelled) {
           const p = Number(localStorage.getItem("about_projects_count")) || 0;
           const c = Number(localStorage.getItem("about_certificates_count")) || 0;
-          const e = Number(localStorage.getItem("about_years_experience")) || 0;
+          const e = experienceYearsLabel(Number(localStorage.getItem(EXPERIENCE_MONTHS_KEY)));
           setCounts({ projects: p, certificates: c, yearsExperience: e });
         }
       }

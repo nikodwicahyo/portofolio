@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node scripts/prefetchDedupe.test.mjs && node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs && node scripts/heroVideo.test.mjs",
+    "test": "node scripts/prefetchDedupe.test.mjs && node scripts/pdfThumbStore.test.mjs && node scripts/security.test.mjs && node scripts/heroVideo.test.mjs && node scripts/experience.test.mjs",
     "check-links": "node scripts/check-links.mjs",
     "check-api": "node scripts/check-api-hardening.mjs",
     "perf:budget": "node scripts/perfBudget.mjs",
